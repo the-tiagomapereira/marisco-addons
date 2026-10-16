@@ -1,0 +1,18 @@
+## Interface: 16001
+## Title: Marisco's Shellcracker
+## Notes: Bejeweled-style match-3 with Azeroth's gems. Crack makrura shells with combos.
+## Author: Marisco
+## Version: 0.12 Beta
+## IconTexture: Interface\Icons\Ability_Hunter_Pet_Crab
+## SavedVariables: MariscosShellcrackerDB
+## SavedVariablesPerCharacter: MariscosShellcrackerCharDB
+
+Core.lua
+Data.lua
+ProgressData.lua
+Board.lua
+Leaderboard.lua
+Progress.lua
+UI.lua
+Screens.lua
+Settings.lua

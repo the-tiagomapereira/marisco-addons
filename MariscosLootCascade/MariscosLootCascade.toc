@@ -1,0 +1,14 @@
+## Interface: 16001
+## Title: |cff69ccf0Marisco's|r Loot Cascade
+## Notes: Replaces the loot window with a cascading loot feed that fades in and slowly fades out.
+## Author: Marisco
+## Version: v1.0 - Release
+## SavedVariables: MariscosLootCascadeDB
+## IconTexture: Interface\Icons\INV_Misc_Bag_22
+## Category: Loot
+
+Core.lua
+Feed.lua
+Loot.lua
+Options.lua
+Minimap.lua

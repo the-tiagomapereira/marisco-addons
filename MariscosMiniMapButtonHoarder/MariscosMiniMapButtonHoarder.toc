@@ -1,0 +1,11 @@
+## Interface: 16001
+## Title: Marisco's MiniMapButtonHoarder
+## Notes: Gathers every minimap button behind one button that fans them out in a semi-circle.
+## Author: Marisco
+## Version: 0.5
+## IconTexture: Interface\Icons\INV_Box_02
+## SavedVariables: MariscosMiniMapButtonHoarderDB
+
+Core.lua
+Hoard.lua
+Settings.lua

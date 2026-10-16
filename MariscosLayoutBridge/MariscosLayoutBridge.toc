@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: Marisco's Layout Bridge
+## Notes: Converts retail / modern Edit Mode layout strings so WoW: Forever accepts them.
+## Author: Marisco
+## Version: 0.2
+## IconTexture: Interface\Icons\INV_Misc_Map_01
+## SavedVariables: MariscosLayoutBridgeDB
+
+Convert.lua
+UI.lua

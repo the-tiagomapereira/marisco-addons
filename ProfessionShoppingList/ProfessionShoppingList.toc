@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: Marisco's Profession Shopping List
+## Notes: Pick profession materials into a shopping list and tally auction house prices.
+## Author: Arrozdemarisco
+## Version: 0.25 - Beta
+## IconTexture: Interface\Icons\INV_Misc_Note_01
+## SavedVariables: ProfessionShoppingListDB
+
+Data.lua
+Core.lua
+Guides.lua
+ReleaseNotes.lua
+Auction.lua
+UI.lua
+Minimap.lua

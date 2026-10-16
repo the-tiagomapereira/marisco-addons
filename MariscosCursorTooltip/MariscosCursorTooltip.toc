@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: Marisco's Cursor Tooltip
+## Notes: Anchors the game tooltip (items, spells, units, everything) to the mouse pointer.
+## Author: Marisco
+## Version: 1.0
+## SavedVariables: MariscosCursorTooltipDB
+
+MariscosCursorTooltip.lua

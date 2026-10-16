@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: |cff69ccf0Marisco's|r Item Value Scanner
+## Notes: Scans the Auction House and shows vendor price, AH price, the difference, disenchant value and scan age in item tooltips.
+## Author: Marisco
+## Version: v0.9 - Beta
+## SavedVariables: MariscosIVS_DB
+## IconTexture: Interface\Icons\Spell_Holy_MagicalSentry
+## Category: Auction
+
+Core.lua
+Scanner.lua
+AHButton.lua
+Disenchant.lua
+Tooltip.lua
+MinimapButton.lua
