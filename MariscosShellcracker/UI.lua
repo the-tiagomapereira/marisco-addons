@@ -1010,7 +1010,6 @@ local function BuildPanel()
     P.headerRight:SetPoint("RIGHT", lb, "LEFT", -10, 0)
 end
 
-StaticPopupDialogs = StaticPopupDialogs or {}
 StaticPopupDialogs["MARISCOS_SHELLCRACKER_NEW"] = {
     text = "Start a new game? Your current fight will be lost.",
     button1 = YES or "Yes", button2 = NO or "No",

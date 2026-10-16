@@ -1,12 +1,11 @@
 -- Marisco's Shellcracker - settings, slash commands, minimap button
 local ADDON, ns = ...
-ns.VERSION = "0.12 Beta"
+ns.VERSION = "0.12.1 Beta"
 
 local PREFIX = "|cffffd100Shellcracker:|r "
 local function Print(msg) DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. msg) end
 ns.Print = Print
 
-StaticPopupDialogs = StaticPopupDialogs or {}
 StaticPopupDialogs["MARISCOS_SHELLCRACKER_RESETALL"] = {
     text = "Clear the Shellcracker leaderboard and stats for ALL your characters?",
     button1 = YES or "Yes", button2 = NO or "No",

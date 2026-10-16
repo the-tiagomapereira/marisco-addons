@@ -10,7 +10,7 @@ All addons are for **World of Warcraft: Forever 1.60.x** (interface 16001).
 |---|---|---|
 | [Marisco's Cursor Tooltip](MariscosCursorTooltip/README.md) | 1.0 | Anchors every game tooltip to the mouse pointer, with a cursor ring and trail |
 | [Marisco's Loot Cascade](MariscosLootCascade/README.md) | 1.0 | Replaces the loot window with a cascading feed of loot cards |
-| [Marisco's Shellcracker](MariscosShellcracker/README.md) | 0.12 Beta | A match-3 game against the makrura, with levels, talents and gear |
+| [Marisco's Shellcracker](MariscosShellcracker/README.md) | 0.12.1 Beta | A match-3 game against the makrura, with levels, talents and gear |
 | [Marisco's MiniMapButtonHoarder](MariscosMiniMapButtonHoarder/README.md) | 0.5 Beta | One minimap button that holds all the others |
 | [Marisco's Item Value Scanner](MariscosItemValueScanner/README.md) | 0.9 Beta | Vendor, Auction House and disenchant value on item tooltips |
 | [Marisco's Profession Shopping List](ProfessionShoppingList/README.md) | 0.25 Beta | Profession materials shopping list with Auction House prices and leveling guides |

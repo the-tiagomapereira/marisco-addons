@@ -160,7 +160,6 @@ local function LockNote(s)
     return note
 end
 
-StaticPopupDialogs = StaticPopupDialogs or {}
 StaticPopupDialogs["MARISCOS_SHELLCRACKER_ABANDON"] = {
     text = "Abandon your current run? It still counts on the leaderboard, but you won't get the run experience.",
     button1 = YES or "Yes", button2 = NO or "No",

@@ -1,4 +1,4 @@
-# Marisco's Shellcracker — v0.12 - Beta
+# Marisco's Shellcracker — v0.12.1 - Beta
 
 For World of Warcraft: Forever 1.60.x (interface 16001).
 
@@ -301,6 +301,7 @@ saved separately, and whoever is logged in plays and records under their own nam
 - Settings and best scores are saved per account; the game in progress per character.
 
 ## Changelog
+- 0.12.1: fixed "MariscosShellcracker has been blocked from an action only available to the Blizzard UI" when pressing Esc or opening Options. The addon no longer rewrites a Blizzard global (StaticPopupDialogs), which tainted the game menu.
 - 0.12: WoW gear slots (neck, shoulder, back, wrist, waist, 2 rings, 2 trinkets, main hand, off hand,
   ranged), one-hand/two-hand weapons and dual wielding, shields. Shop restocks every tide, max 3
   paid restocks per tide. Leaderboard fits its window; Remove character button with confirmation.

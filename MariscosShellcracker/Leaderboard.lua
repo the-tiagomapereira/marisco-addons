@@ -410,7 +410,6 @@ local function Build()
     return f
 end
 
-StaticPopupDialogs = StaticPopupDialogs or {}
 StaticPopupDialogs["MARISCOS_SHELLCRACKER_REMOVE"] = {
     text = "Remove %s from the Shellcracker leaderboard? Its stats and runs will be deleted.",
     button1 = YES or "Yes", button2 = NO or "No",
