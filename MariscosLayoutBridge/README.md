@@ -1,4 +1,4 @@
-# Marisco's Layout Bridge — v0.2 - Beta
+# Marisco's Layout Bridge — v0.2 - Alpha
 
 For World of Warcraft: Forever 1.60.x (interface 16001).
 

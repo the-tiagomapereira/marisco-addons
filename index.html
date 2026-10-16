@@ -23,6 +23,7 @@
   --q-epic: #b56cf2;
   --q-legend: #ff8a1f;
   --q-common: #f2f2f2;
+  --q-poor: #9d9d9d;
   --display: "Marcellus SC", "Trajan Pro", Georgia, serif;
   --body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -86,7 +87,7 @@ section { padding-block: 32px; }
 .tip .use { color: var(--use); font-size: 15px; margin-top: 6px; }
 .tip .flavor { color: var(--gold); font-style: italic; font-size: 15px; margin-top: 4px; }
 .tip .more { margin-top: 10px; font: 500 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.q-legend { --q: var(--q-legend); } .q-epic { --q: var(--q-epic); } .q-rare { --q: var(--q-rare); }
+.q-legend { --q: var(--q-legend); } .q-epic { --q: var(--q-epic); } .q-rare { --q: var(--q-rare); } .q-poor { --q: var(--q-poor); }
 
 /* detail */
 .detail { margin-top: 26px; background: var(--frame); border: 1px solid var(--edge); border-top: 3px solid var(--q); border-radius: 6px; padding-block: 26px; }
@@ -161,7 +162,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
   <section id="addons">
     <div class="sec-head stack">
       <h2>My current addons</h2>
-      <p>Item color shows status: <span style="color:var(--q-legend)">orange</span> is a release, <span style="color:var(--q-rare)">blue</span> is beta. Click one for details.</p>
+      <p>Item color shows status: <span style="color:var(--q-legend)">orange</span> is a release, <span style="color:var(--q-rare)">blue</span> is beta, <span style="color:var(--q-poor)">gray</span> is alpha. Click one for details.</p>
     </div>
     <div class="bag" id="bag"></div>
     <div id="detail"></div>
@@ -229,8 +230,8 @@ const ADDONS = [
     cmds:["/psl","/psl add <item>","/psl scan","/psl guide","/psl notes","/psl settings"],
     shots:["Shopping list docked to the Auction House","Leveling guide profession grid","Leatherworking 1-225 plan with costs"],
     log:[["0.25","Check for updates button in the leveling guide."],["0.24","Skill bars for your own professions."],["0.19","Guides for seven more professions."]] },
-  { id:"bridge", name:"Marisco's Layout Bridge", ver:"0.2", status:"Beta", q:"q-rare", slot:"Edit Mode",
-    cmd:"/mlb", use:"Converts retail Edit Mode layout strings so Forever accepts them, blended with one of your layouts.",
+  { id:"bridge", name:"Marisco's Layout Bridge", ver:"0.2", status:"Alpha", q:"q-poor", slot:"Edit Mode",
+    cmd:"/mlb", use:"Converts retail Edit Mode layout strings so Forever accepts them, blended with one of your layouts. Alpha: not reliable yet, best tried on simple layouts.",
     flavor:"\"Retail positions, Forever frames.\"",
     feat:["Fixes the header that makes Forever reject retail strings","Pick which parts to take: bars, unit frames, chat, minimap…","Untouched frames keep your own positions","Frames pulled back on screen; output ready to Import"],
     cmds:["/mlb","/mlb debug","/mlb minimap"],

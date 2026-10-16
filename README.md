@@ -14,7 +14,7 @@ All addons are for **World of Warcraft: Forever 1.60.x** (interface 16001).
 | [Marisco's MiniMapButtonHoarder](MariscosMiniMapButtonHoarder/README.md) | 0.5 Beta | One minimap button that holds all the others |
 | [Marisco's Item Value Scanner](MariscosItemValueScanner/README.md) | 0.9 Beta | Vendor, Auction House and disenchant value on item tooltips |
 | [Marisco's Profession Shopping List](ProfessionShoppingList/README.md) | 0.25 Beta | Profession materials shopping list with Auction House prices and leveling guides |
-| [Marisco's Layout Bridge](MariscosLayoutBridge/README.md) | 0.2 Beta | Converts retail Edit Mode layout strings for Forever |
+| [Marisco's Layout Bridge](MariscosLayoutBridge/README.md) | 0.2 Alpha | Converts retail Edit Mode layout strings for Forever |
 
 ## Install
 1. Close WoW.
