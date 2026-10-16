@@ -112,6 +112,13 @@ ul.feat { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 /* install */
 ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }
 ol.steps li { counter-increment: s; background: var(--frame); border: 1px solid var(--edge); border-radius: 6px; padding: 16px; display: grid; gap: 6px; align-content: start; }
+.notice { display: flex; gap: 14px; align-items: flex-start; max-width: 720px; background: #2a2210; border: 1px solid #5a4516; border-left: 4px solid var(--gold); border-radius: 6px; padding: 14px 16px; }
+.notice .ic { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--gold); color: #1a1408; display: grid; place-items: center; font: 700 16px/1 var(--body); }
+.notice div { min-width: 0; }
+.notice strong { color: var(--gold); display: block; margin-bottom: 2px; }
+.notice p { margin: 0; font-size: 16px; }
+ol.steps li { min-width: 0; }
+ol.steps code { overflow-wrap: anywhere; }
 ol.steps li::before { content: counter(s); font: 400 26px/1 var(--display); color: var(--gold); }
 
 footer { padding-block: 40px 56px; color: var(--muted); font-size: 15px; border-top: 1px solid var(--edge); margin-top: 24px; }
@@ -135,6 +142,13 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
       <span class="chip">Interface <b>16001</b></span>
       <span class="chip"><b>6</b> addons</span>
       <span class="chip">Updated <b>Oct 16, 2026</b></span>
+    </div>
+    <div class="notice" role="note">
+      <span class="ic" aria-hidden="true">!</span>
+      <div>
+        <strong>Mostly beta, so expect rough edges</strong>
+        <p>Most of these addons, and the instructions on this page, are still in beta. World of Warcraft: Forever is itself in beta, so they can only be properly battle-tested once the game is released. If something breaks, tell Marisco in game.</p>
+      </div>
     </div>
     <div class="path">
       <code id="pathText">_classic_beta_/Interface/AddOns</code>
