@@ -65,6 +65,8 @@ h2 { font: 400 30px/1.15 var(--display); color: var(--gold); margin: 0; }
 section { padding-block: 32px; }
 .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; margin-bottom: 20px; }
 .sec-head p { margin: 0; color: var(--muted); }
+.sec-head.stack { flex-direction: column; align-items: flex-start; gap: 6px; }
+.sec-head.stack p { font-size: 16px; }
 
 /* bag of tooltips */
 .bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 18px; }
@@ -157,7 +159,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
   </header>
 
   <section id="addons">
-    <div class="sec-head">
+    <div class="sec-head stack">
       <h2>My current addons</h2>
       <p>Item color shows status: <span style="color:var(--q-legend)">orange</span> is a release, <span style="color:var(--q-rare)">blue</span> is beta. Click one for details.</p>
     </div>
