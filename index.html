@@ -140,7 +140,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     <div class="meta">
       <span class="chip">Client <b>1.60.x</b></span>
       <span class="chip">Interface <b>16001</b></span>
-      <span class="chip"><b>6</b> addons</span>
+      <span class="chip"><b>7</b> addons</span>
       <span class="chip">Updated <b>Oct 16, 2026</b></span>
     </div>
     <div class="notice" role="note">
@@ -220,6 +220,13 @@ const ADDONS = [
     cmds:["/mivs scan","/mivs fast","/mivs de","/mivs status"],
     shots:["Scan AH button on the Auction House","Value panel under an item tooltip","Disenchant breakdown on a blue"],
     log:[["0.9","Panel stays clear of the comparison tooltips."]] },
+  { id:"psl", name:"Marisco's Profession Shopping List", ver:"0.25", status:"Beta", q:"q-rare", slot:"Professions",
+    cmd:"/psl", use:"Pick profession materials into a shopping list beside the Auction House and see what it all costs.",
+    flavor:"\"Know the bill before you skill.\"",
+    feat:["Materials per profession, with search, source filter and grid view","Scan the whole list in one go: total, gold you carry, gold left after","Vendor or Auction House, whichever is cheaper, marked per item","Leveling guides for 8 professions that fill the list in one click"],
+    cmds:["/psl","/psl add <item>","/psl scan","/psl guide","/psl notes","/psl settings"],
+    shots:["Shopping list docked to the Auction House","Leveling guide profession grid","Leatherworking 1-225 plan with costs"],
+    log:[["0.25","Check for updates button in the leveling guide."],["0.24","Skill bars for your own professions."],["0.19","Guides for seven more professions."]] },
   { id:"bridge", name:"Marisco's Layout Bridge", ver:"0.2", status:"Beta", q:"q-rare", slot:"Edit Mode",
     cmd:"/mlb", use:"Converts retail Edit Mode layout strings so Forever accepts them, blended with one of your layouts.",
     flavor:"\"Retail positions, Forever frames.\"",
