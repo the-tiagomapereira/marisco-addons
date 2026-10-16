@@ -100,6 +100,13 @@ section { padding-block: 32px; }
 .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
 .shot { aspect-ratio: 16/10; max-width: 100%; border: 1px dashed var(--edge); border-radius: 4px; display: grid; place-items: center; text-align: center; padding: 14px; color: var(--muted); font-size: 14px;
   background: repeating-linear-gradient(135deg, var(--frame-2) 0 10px, var(--frame) 10px 20px); }
+.shot.img { padding: 0; border-style: solid; overflow: hidden; background: var(--night); }
+.shot.img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s; }
+.shot.img { cursor: zoom-in; }
+#zoom { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: max(16px, 4vh) max(16px, env(safe-area-inset-right, 0px)) max(16px, 4vh) max(16px, env(safe-area-inset-left, 0px)); background: #05080dcc; pointer-events: none; opacity: 0; transition: opacity .15s; }
+#zoom.on { opacity: 1; }
+#zoom.pinned { pointer-events: auto; cursor: zoom-out; }
+#zoom img { max-width: min(1280px, 100%); max-height: 100%; border: 1px solid var(--edge); border-radius: 6px; box-shadow: 0 20px 60px #000; }
 .shot span { background: var(--frame); padding: 4px 8px; border-radius: 3px; }
 .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 24px; }
 .cols > div { min-width: 0; }
@@ -193,7 +200,7 @@ const ADDONS = [
     flavor:"\"The tooltip goes where you look.\"",
     feat:["Drag-and-drop position setup around a preview pointer","Cursor ring with color, opacity, radius and a click pulse","Fading cursor trail (beta)","Flips to the other side near screen edges"],
     cmds:["/mct","/mct ring","/mct pulse","/mct trail","/mct follow","/mct stick","/mct reset"],
-    shots:["Settings screen with the preview circle","Tooltip following the pointer","Cursor ring and trail in combat"],
+    shots:[{src:"shots/cursor-1.jpg", cap:"Settings screen with the preview circle"},"Tooltip following the pointer","Cursor ring and trail in combat"],
     log:[["1.0","Window title centered; first full release."],["0.7.2","Sliders restyled with the value in yellow."],["0.6","Optional click pulse on the cursor ring."]] },
   { id:"loot", zip:"MariscosLootCascade-1.0.zip", name:"Marisco's Loot Cascade", ver:"1.0", status:"Release", q:"q-legend", slot:"Loot",
     cmd:"/mlc", use:"Replaces the loot window with a cascading feed of cards, one per item, that fade away.",
@@ -269,7 +276,7 @@ function open(id, scroll) {
       <div><h3>${esc(a.name)}</h3><p class="sub">Version ${a.ver} · ${a.status} · Forever 1.60.x</p></div>
       <a class="dl" href="https://the-tiagomapereira.github.io/marisco-addons/downloads/${zip}" download>Download <small>${zip}</small></a>
     </div>
-    <div class="shots">${a.shots.map(s => `<div class="shot"><span>Screenshot: ${esc(s)}</span></div>`).join("")}</div>
+    <div class="shots">${a.shots.map(s => typeof s === "string" ? `<div class="shot"><span>Screenshot: ${esc(s)}</span></div>` : `<div class="shot img" tabindex="0" data-src="${s.src}" title="${esc(s.cap)}"><img src="${s.src}" alt="${esc(s.cap)}" loading="lazy"></div>`).join("")}</div>
     <div class="cols">
       <div><h4>What it does</h4><ul class="feat">${a.feat.map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>
       <div><h4>Commands</h4><div class="cmds">${a.cmds.map(c => `<code>${esc(c)}</code>`).join("")}</div></div>
@@ -278,9 +285,20 @@ function open(id, scroll) {
   try { localStorage.setItem("mads-open", a.id); } catch (e) {}
   if (scroll) detail.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
-let start = "loot";
+let start = "cursor";
 try { start = localStorage.getItem("mads-open") || start; } catch (e) {}
 open(start, false);
+
+const zoom = document.createElement("div"); zoom.id = "zoom"; zoom.hidden = true; zoom.innerHTML = '<img alt="">';
+document.body.appendChild(zoom);
+function showZoom(el, pin) { zoom.firstChild.src = el.dataset.src; zoom.firstChild.alt = el.title; zoom.hidden = false; zoom.classList.toggle("pinned", !!pin); requestAnimationFrame(() => zoom.classList.add("on")); }
+function hideZoom() { zoom.classList.remove("on", "pinned"); zoom.hidden = true; }
+detail.addEventListener("mouseover", e => { const el = e.target.closest(".shot.img"); if (el && !zoom.classList.contains("pinned")) showZoom(el, false); });
+detail.addEventListener("mouseout", e => { const el = e.target.closest(".shot.img"); if (el && !el.contains(e.relatedTarget) && !zoom.classList.contains("pinned")) hideZoom(); });
+detail.addEventListener("click", e => { const el = e.target.closest(".shot.img"); if (el) showZoom(el, true); });
+detail.addEventListener("keydown", e => { const el = e.target.closest(".shot.img"); if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); showZoom(el, true); } });
+zoom.addEventListener("click", hideZoom);
+document.addEventListener("keydown", e => { if (e.key === "Escape") hideZoom(); });
 
 document.getElementById("copyPath").addEventListener("click", e => {
   const btn = e.currentTarget, txt = document.getElementById("pathText").textContent;
