@@ -4,7 +4,7 @@ This is just a small repo of my addons to keep and share with friends.
 All addons are for **World of Warcraft: Forever 1.60.x** (interface 16001).
 
 **Showcase page:** https://the-tiagomapereira.github.io/marisco-addons/
-**Downloads:** [Releases](https://github.com/the-tiagomapereira/marisco-addons/releases)
+**Downloads:** on the showcase page, or in the [downloads](downloads) folder
 
 | Addon | Version | What it does |
 |---|---|---|
@@ -18,7 +18,7 @@ All addons are for **World of Warcraft: Forever 1.60.x** (interface 16001).
 
 ## Install
 1. Close WoW.
-2. Download the addon's zip from [Releases](https://github.com/the-tiagomapereira/marisco-addons/releases).
+2. Download the addon's zip from the showcase page or the [downloads](downloads) folder.
 3. Extract it into `_classic_beta_/Interface/AddOns` (during the beta).
 4. Start the game and enable the addon in the AddOns list.
 
