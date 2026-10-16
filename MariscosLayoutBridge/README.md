@@ -2,6 +2,8 @@
 
 For World of Warcraft: Forever 1.60.x (interface 16001).
 
+> **Alpha:** this addon is not reliable yet. It has the best chance of working on simple layouts.
+
 Converts Edit Mode layout strings from retail (or any other modern client) so WoW: Forever
 accepts them, and blends them with one of your own layouts so the result is a usable
 approximation rather than retail positions dropped onto Forever's frames.
