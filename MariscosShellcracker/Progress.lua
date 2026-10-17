@@ -449,11 +449,29 @@ function P:EquipTarget(item, alt)
     return (Power(g[a]) <= Power(g[b])) and a or b      -- replace the weaker one
 end
 
+-- during a run only the items that dropped in this run can be put on
+function P:FoundThisRun(item)
+    local G = ns.Game
+    return item ~= nil and item.runId ~= nil and G ~= nil and G.run ~= nil and G.board ~= nil
+        and not G.over and item.runId == G.run.id
+end
+
+function P:CanEquipNow(item)
+    return not self:Locked() or self:FoundThisRun(item)
+end
+
+-- items not yet looked at in the bags
+function P:NewCount()
+    local n = 0
+    for i = 1, ns.BAG_SIZE do local it = self:Data().bags[i]; if it and it.new then n = n + 1 end end
+    return n
+end
+
 function P:Equip(bagIndex, alt)
-    if self:Locked() then return false, "Gear can't be changed during a run." end
     local d = self:Data()
     local item = d.bags[bagIndex]
     if not item then return false end
+    if not self:CanEquipNow(item) then return false, "During a run you can only equip items found in this run." end
     local target, clear = self:EquipTarget(item, alt)
     -- everything that comes off has to fit in the bags
     local off = {}
@@ -467,12 +485,14 @@ function P:Equip(bagIndex, alt)
         d.gear[k] = nil
     end
     d.gear[target] = item
+    item.new = nil
     self.cache = nil
+    if self:Locked() and ns.UI and ns.UI.GearChanged then ns.UI:GearChanged(item) end
     return true, target
 end
 
 function P:Unequip(slotId)
-    if self:Locked() then return false, "Gear can't be changed during a run." end
+    if self:Locked() then return false, "Gear can't be taken off during a run." end
     local d = self:Data()
     local item = d.gear[slotId]
     if not item then return false end

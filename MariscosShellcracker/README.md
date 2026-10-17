@@ -1,4 +1,4 @@
-# Marisco's Shellcracker — v0.12.1 - Beta
+# Marisco's Shellcracker — v1.0 - Release
 
 For World of Warcraft: Forever 1.60.x (interface 16001).
 
@@ -17,7 +17,7 @@ The game window always opens on the **menu**: your character card (rank badge, l
 experience, money, unspent talent points, bag space and best results) and the buttons
 **Continue** (greyed out when there is no run to resume; shows the makrura and score you left at),
 **New Game**, **Character & Bags**, **Talents**, **Shop**, **Leaderboard** and **Settings**.
-During a fight the **Menu** button (bottom right) pauses the run and brings you back here.
+During a fight the **Menu** button (under the board) pauses the run and brings you back here.
 A run survives closing the window, logging out and reloading: just press Continue.
 
 ## Play
@@ -180,6 +180,21 @@ all healing are on the same scale.
 | Restoration | +1% Huge Emerald healing |
 | Fortune | +0.5% gold and +0.25% item drop chance |
 
+### Loot during a run: the backpack
+Drops are a surprise: the battle text only says the makrura *dropped something*. The **backpack
+button** under the right panel shows how full your bags are and glows green with a count when there
+are new items. Click it to open your bags beside the game:
+- New items glow gold until you point at them.
+- **Left-click** equips an item **found in this run**: your health and power change at once (more
+  Stamina = more health straight away). What it replaces goes into your bags.
+- Items from before the run are greyed out: they wait until the run is over. Gear can't be taken
+  off and talents can't change during a run.
+- **Right-click** sells anything (with a confirmation); the Shop's Buyback tab can get it back.
+- **Hover an item** to compare: beside it, a **Currently Equipped** tooltip shows what you are
+  wearing in that slot (both hands for a two-hander), and the item's tooltip lists the stat change
+  if you equip it (green gain, red loss, Stamina also as health). Hold **Shift** to compare with the
+  second ring/trinket or the off hand. The bags window also lists your current gear stats.
+
 ### Gear slots (like WoW)
 Head, Neck, Shoulder, Back, Chest, Wrist, Hands, Waist, Legs, Feet, two Finger slots, two
 Trinket slots, Main Hand, Off Hand and Ranged.
@@ -264,7 +279,7 @@ saved separately, and whoever is logged in plays and records under their own nam
   only writes saved data then. `/shell resetscores` clears everything, after asking.
 
 ## Settings
-**Settings** button (between Hint and New Game) or `/shell config`. The window opens beside the game:
+**Settings** button (under the board, between Hint and Menu) or `/shell config`. The window opens beside the game:
 - **Sound effects**: all of Shellcracker's sounds on or off.
 - **Play music**: plays the songs from World of Warcraft's inns (Alliance, Horde, human, dwarf,
   night elf, orc, tauren, undead and pirate taverns), shuffled, one after another, while the game
@@ -301,6 +316,13 @@ saved separately, and whoever is logged in plays and records under their own nam
 - Settings and best scores are saved per account; the game in progress per character.
 
 ## Changelog
+- 1.0 (release): First full release. Same game as 0.13.1, now marked as a release.
+- 0.13.1: WoW-style "Currently Equipped" comparison tooltips beside the item tooltip, stat change
+  if you equip it (updates when you press Shift), your gear stats shown in the bags window.
+- 0.13: backpack under the right panel. Loot is a surprise until you open your bags; items found in
+  the current run can be equipped mid-run (health updates at once), anything can be sold. Hint,
+  Settings and Menu buttons centred in the strip under the board.
+- 0.12.2: Hint, Settings and Menu buttons moved to the strip under the board, centred on it.
 - 0.12.1: fixed "MariscosShellcracker has been blocked from an action only available to the Blizzard UI" when pressing Esc or opening Options. The addon no longer rewrites a Blizzard global (StaticPopupDialogs), which tainted the game menu.
 - 0.12: WoW gear slots (neck, shoulder, back, wrist, waist, 2 rings, 2 trinkets, main hand, off hand,
   ranged), one-hand/two-hand weapons and dual wielding, shields. Shop restocks every tide, max 3

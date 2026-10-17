@@ -1,6 +1,6 @@
 -- Marisco's Shellcracker - settings, slash commands, minimap button
 local ADDON, ns = ...
-ns.VERSION = "0.12.1 Beta"
+ns.VERSION = "1.0 - Release"
 
 local PREFIX = "|cffffd100Shellcracker:|r "
 local function Print(msg) DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. msg) end

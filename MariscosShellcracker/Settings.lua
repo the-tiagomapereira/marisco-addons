@@ -131,7 +131,10 @@ end
 function S:Toggle()
     ns.UI:Open()
     win = win or Build()
-    if win:IsShown() then win:Hide() else win:Show() end
+    if win:IsShown() then win:Hide() else
+        if ns.Screens and ns.Screens.HideBags then ns.Screens:HideBags() end
+        win:Show()
+    end
 end
 
 function S:Open()

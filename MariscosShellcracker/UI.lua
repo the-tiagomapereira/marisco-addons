@@ -179,7 +179,7 @@ local function MakeWindow()
         ok, frame = pcall(CreateFrame, "Frame", "MariscosShellcrackerFrame", UIParent, "BasicFrameTemplateWithInset")
     end
     if not ok or not frame then frame = CreateFrame("Frame", "MariscosShellcrackerFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate") end
-    frame:SetSize(14 + BOARD_PX + 14 + PANEL_W + 14, 64 + BOARD_PX + 16 + 26)   -- +26: room for the buff row
+    frame:SetSize(14 + BOARD_PX + 14 + PANEL_W + 14, 64 + BOARD_PX + 52)   -- 52: the strip under the board (buttons, bags)
     frame:SetFrameStrata("HIGH")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
@@ -980,22 +980,57 @@ local function BuildPanel()
         prev = l
     end
 
-    local hint = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    hint:SetSize(56, 24)
-    hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", x0, 16)
-    hint:SetText("Hint")
-    hint:SetScript("OnClick", function() UI:ShowHint("manual") end)
+    -- Hint / Settings / Menu sit in the strip under the board, centred on it both ways
+    local STRIP_MID = 64 + BOARD_PX + 23          -- middle of the strip, above the window's bottom border
     local opt = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    opt:SetSize(70, 24)
-    opt:SetPoint("LEFT", hint, "RIGHT", 4, 0)
+    opt:SetSize(86, 24)
+    opt:SetPoint("CENTER", f, "TOPLEFT", 14 + BOARD_PX / 2, -STRIP_MID)
     opt:SetText("Settings")
     opt:SetScript("OnClick", function() ns.Settings:Toggle() end)
     P.optButton = opt
+    local hint = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    hint:SetSize(86, 24)
+    hint:SetPoint("RIGHT", opt, "LEFT", -8, 0)
+    hint:SetText("Hint")
+    hint:SetScript("OnClick", function() UI:ShowHint("manual") end)
     local new = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    new:SetSize(76, 24)
-    new:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", x0 + PANEL_W, 16)
+    new:SetSize(86, 24)
+    new:SetPoint("LEFT", opt, "RIGHT", 8, 0)
     new:SetText("Menu")
     new:SetScript("OnClick", function() UI:Pause() end)
+
+    -- bags, in the same strip under the right panel: click to see, equip and sell the loot
+    local bag = CreateFrame("Button", "MariscosShellcrackerBagButton", f)
+    bag:SetSize(34, 34)
+    bag:SetPoint("RIGHT", f, "TOPLEFT", x0 + PANEL_W, -STRIP_MID)
+    bag:SetFrameLevel(f:GetFrameLevel() + 6)
+    bag:SetNormalTexture("Interface\\Buttons\\Button-Backpack-Up")
+    bag:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    bag.glow = bag:CreateTexture(nil, "OVERLAY")
+    bag.glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    bag.glow:SetBlendMode("ADD")
+    bag.glow:SetVertexColor(0.3, 1, 0.3)
+    bag.glow:SetPoint("CENTER"); bag.glow:SetSize(64, 64)
+    bag.glow:Hide()
+    bag.badge = bag:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    bag.badge:SetPoint("BOTTOMRIGHT", -1, 2)
+    bag:SetScript("OnClick", function() ns.Screens:ToggleBags() end)
+    bag:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Backpack")
+        local n = ns.Prog:NewCount()
+        if n > 0 then GameTooltip:AddLine(n .. " new item" .. (n > 1 and "s" or "") .. " to look at.", 0.2, 1, 0.2) end
+        GameTooltip:AddLine("Click to see your loot. Items found in this run can be equipped or sold straight away.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    bag:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    P.bagButton = bag
+    P.bagText = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    P.bagText:SetPoint("BOTTOMRIGHT", bag, "LEFT", -8, 1)
+    P.bagText:SetJustifyH("RIGHT")
+    P.bagNew = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    P.bagNew:SetPoint("TOPRIGHT", bag, "LEFT", -8, -1)
+    P.bagNew:SetJustifyH("RIGHT")
     P.hintButton, P.newButton = hint, new
 
     P.header = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -1072,6 +1107,15 @@ function UI:UpdateHeader(screenTitle)
     P.headerRight:SetText(("|T%s:16:16|t %s %s"):format(badge, title, (UnitName and UnitName("player")) or ""))
 end
 
+function UI:UpdateBagButton()
+    if not P.bagButton then return end
+    local n = ns.Prog:NewCount()
+    P.bagText:SetText("Backpack  |cffffffff" .. ns.Prog:BagCount() .. "/" .. ns.BAG_SIZE .. "|r")
+    P.bagNew:SetText(n > 0 and ("|cff20ff20" .. n .. " new item" .. (n > 1 and "s" or "") .. "|r") or "|cff888888Click to open|r")
+    P.bagButton.badge:SetText(n > 0 and n or "")
+    P.bagButton.glow:SetShown(n > 0)
+end
+
 function UI:UpdatePanel()
     local e = G.enemy
     if not e then return end
@@ -1102,6 +1146,7 @@ function UI:UpdatePanel()
     P.stat["Biggest combo"]:SetText(G.bestCombo > 1 and ("x" .. G.bestCombo) or "-")
     local loot = G.loot or { gold = 0, items = 0 }
     P.stat["Loot"]:SetText(ns.Prog:Money(loot.gold) .. (loot.items > 0 and ("  |cff1eff00+" .. loot.items .. " item" .. (loot.items > 1 and "s" or "") .. "|r") or ""))
+    UI:UpdateBagButton()
     local d = ns.Prog:Data()
     local title = ns.Prog:Title()
     P.youLevel:SetText("Level " .. d.level .. " " .. title)
@@ -1215,14 +1260,30 @@ function UI:Loot(e)
     BattleLog("loot", ("%s loots %s."):format(Me(), ns.Prog:Money(copper)))
     local item = ns.Prog:RollDrop(e, (G.buffs and G.buffs.drop) or 0)
     if item then
+        -- what it is stays a surprise until you open your bags
+        item.runId = G.run and G.run.id
+        item.new = true
         if ns.Prog:AddToBags(item) then
             G.loot.items = G.loot.items + 1
             SFX("loot")
-            BattleLog("loot", ("%s drops %s!"):format(Foe(), ns.Prog:Link(item)))
+            BattleLog("loot", ("%s drops something! Open your bags to see what it is."):format(Foe()))
         else
-            BattleLog("warn", ("Your bags are full: %s is lost."):format(ns.Prog:Link(item)))
+            BattleLog("warn", "Your bags are full: the item it dropped is lost. Sell something from your bags.")
         end
+        if ns.Screens and ns.Screens.RefreshBags then ns.Screens:RefreshBags() end
     end
+end
+
+-- gear put on mid-run (an item found in this run): health and power change straight away
+function UI:GearChanged(item)
+    if not G.board or G.over then return end
+    local oldMax = G.maxHP or ns.PLAYER_HP
+    G.mods = ns.Prog:Mods()
+    G.maxHP = G.mods.maxHP
+    if G.playerHP then G.playerHP = max(1, min(G.maxHP, G.playerHP + (G.maxHP - oldMax))) end
+    if item then BattleLog("loot", ("%s equips %s."):format(Me(), ns.Prog:Link(item))) end
+    UI:UpdatePanel()
+    Save()
 end
 
 -- leave the fight for the menu (the run is kept)
@@ -1272,6 +1333,11 @@ function UI:AbandonRun()
 end
 
 
+-- every run gets its own id: items that drop in it carry it, and only those can be equipped mid-run
+local function NewRunId()
+    return ("%d-%d"):format((time and time()) or 0, math.random(1, 999999))
+end
+
 function UI:NewGame()
     -- starting over in the middle of a fight still counts as a run
     if UI:HasRun() then UI:AbandonRun() end
@@ -1283,6 +1349,7 @@ function UI:NewGame()
     G.maxHP = G.mods.maxHP
     G.score, G.moves, G.bestCombo, G.over, G.paused = 0, 0, 0, false, false
     G.run = ns.Stats:NewRun()
+    G.run.id = NewRunId()
     G.loot = { gold = 0, items = 0 }
     G.cheatUsed, G.overpowerReady, G.flurryReady = false, false, false
     G.buffs, G.dot, G.frozen = { dmg = 0, dr = 0, gold = 0, drop = 0 }, nil, false
@@ -1310,6 +1377,7 @@ function UI:LoadGame()
     G.maxHP = G.mods.maxHP
     G.score, G.moves, G.bestCombo, G.over, G.paused = s.score or 0, s.moves or 0, s.bestCombo or 0, false, false
     G.run = s.run or ns.Stats:NewRun()
+    G.run.id = G.run.id or NewRunId()
     G.loot = s.loot or { gold = 0, items = 0 }
     G.cheatUsed, G.overpowerReady, G.flurryReady = s.cheatUsed, s.overpowerReady, s.flurryReady
     G.buffs = s.buffs or { dmg = 0, dr = 0, gold = 0, drop = 0 }

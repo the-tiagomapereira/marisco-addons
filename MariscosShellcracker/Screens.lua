@@ -88,19 +88,87 @@ local function ItemButton(parent, size)
     return b
 end
 
--- difference between an item and what is equipped in its slot, as tooltip lines
-local function CompareLines(item)
-    local target = Prog:EquipTarget(item, IsShiftKeyDown and IsShiftKeyDown())
-    local cur = Prog:Data().gear[target]
+-- what putting an item on would take off: the target slot plus any slot it clears
+-- (a two-hander takes off both hands)
+local function Replaced(item, alt)
+    local g = Prog:Data().gear
+    local target, clear = Prog:EquipTarget(item, alt)
     local out = {}
-    local function diff(name, a, b, suffix)
-        local d = (a or 0) - (b or 0)
+    if g[target] then out[#out+1] = { slot = target, item = g[target] } end
+    for _, k in ipairs(clear or {}) do
+        if k ~= target and g[k] then out[#out+1] = { slot = k, item = g[k] } end
+    end
+    return out, target
+end
+
+local SLOT_NAME = {}
+for _, sl in ipairs(ns.SLOTS) do SLOT_NAME[sl.id] = sl.name end
+
+-- stat difference after the swap, as tooltip lines (green gain, red loss)
+local function CompareLines(item, off)
+    local out = {}
+    for _, k in ipairs(ns.STAT_ORDER) do
+        local had = 0
+        for _, o in ipairs(off) do had = had + (o.item.stats[k] or 0) end
+        local d = (item.stats[k] or 0) - had
         if d ~= 0 then
-            out[#out+1] = { (d > 0 and "+" or "") .. d .. (suffix or " ") .. name, d > 0 and 0.1 or 1, d > 0 and 1 or 0.2, d > 0 and 0.1 or 0.2 }
+            local txt = (d > 0 and "+" or "") .. d .. " " .. ns.STAT_INFO[k].name
+            if k == "sta" then txt = txt .. (" (%s%d health)"):format(d > 0 and "+" or "", d * ns.STAT_INFO.sta.each) end
+            out[#out+1] = { txt, d > 0 and 0.1 or 1, d > 0 and 1 or 0.2, d > 0 and 0.1 or 0.2 }
         end
     end
-    for _, k in ipairs(ns.STAT_ORDER) do diff(ns.STAT_INFO[k].name, item.stats[k], cur and cur.stats[k]) end
-    return out, cur
+    return out
+end
+
+-- "Currently Equipped" tooltips beside the item tooltip, like WoW's comparison tooltips
+local compareTips = {}
+local function CompareTip(i)
+    if compareTips[i] then return compareTips[i] end
+    local ok, t = pcall(CreateFrame, "GameTooltip", "MariscosShellcrackerCompareTip" .. i, UIParent, "GameTooltipTemplate")
+    if not ok or not t then return nil end
+    t:SetFrameStrata("TOOLTIP")
+    -- goes away together with the item tooltip
+    t:SetScript("OnUpdate", function(self)
+        if not GameTooltip:IsShown() or GameTooltip:GetOwner() ~= self.forOwner then self:Hide() end
+    end)
+    compareTips[i] = t
+    return t
+end
+
+local function HideCompare() for _, t in pairs(compareTips) do t:Hide() end end
+
+local function ShowCompare(owner, off)
+    HideCompare()
+    if #off == 0 then return end
+    -- room on the right? otherwise stack them to the left of the item tooltip
+    local right = GameTooltip.GetRight and GameTooltip:GetRight()
+    local screen = UIParent.GetRight and UIParent:GetRight()
+    local toLeft = right and screen and (right + 280 * #off > screen)
+    local prev = GameTooltip
+    for i, o in ipairs(off) do
+        local t = CompareTip(i)
+        if not t then return end
+        t.forOwner = owner
+        t:SetOwner(owner, "ANCHOR_NONE")
+        t:ClearAllPoints()
+        if toLeft then t:SetPoint("TOPRIGHT", prev, "TOPLEFT", -2, 0)
+        else t:SetPoint("TOPLEFT", prev, "TOPRIGHT", 2, 0) end
+        t:SetText("Currently Equipped" .. ((#off > 1 or SLOT_NAME[o.slot]) and ("  |cff888888(" .. (SLOT_NAME[o.slot] or o.slot) .. ")|r") or ""), 0.5, 0.5, 0.5)
+        local lines = Prog:ItemLines(o.item)
+        for k = 1, #lines do t:AddLine(lines[k][1], lines[k][2], lines[k][3], lines[k][4], true) end
+        t:Show()
+        prev = t
+    end
+end
+
+-- pressing or releasing Shift changes which slot an item would go in: redraw the tooltip
+do
+    local watch = CreateFrame("Frame")
+    if watch.RegisterEvent then watch:RegisterEvent("MODIFIER_STATE_CHANGED") end
+    watch:SetScript("OnEvent", function()
+        local o = GameTooltip:IsShown() and GameTooltip:GetOwner()
+        if o and o.isBagSlot and o.item and o:GetScript("OnEnter") then o:GetScript("OnEnter")(o) end
+    end)
 end
 
 local function ItemTooltip(owner, item, extra, compare)
@@ -108,22 +176,27 @@ local function ItemTooltip(owner, item, extra, compare)
     local lines = Prog:ItemLines(item)
     GameTooltip:SetText(lines[1][1], lines[1][2], lines[1][3], lines[1][4])
     for i = 2, #lines do GameTooltip:AddLine(lines[i][1], lines[i][2], lines[i][3], lines[i][4], true) end
+    local off
     if compare then
-        local diffs, cur = CompareLines(item)
+        local target
+        off, target = Replaced(item, IsShiftKeyDown and IsShiftKeyDown())
         GameTooltip:AddLine(" ")
-        if cur then
-            GameTooltip:AddLine("Instead of " .. Prog:Link(cur) .. ":", 0.8, 0.8, 0.8)
-            if #diffs == 0 then GameTooltip:AddLine("No stat change", 0.6, 0.6, 0.6) end
+        if #off == 0 then
+            GameTooltip:AddLine(("Your %s slot is empty: all gain."):format(SLOT_NAME[target] or target), 0.8, 0.8, 0.8)
+            for _, d in ipairs(CompareLines(item, off)) do GameTooltip:AddLine(d[1], d[2], d[3], d[4]) end
         else
-            GameTooltip:AddLine("Nothing equipped in this slot.", 0.8, 0.8, 0.8)
+            GameTooltip:AddLine("If you equip this item:", 1, 0.82, 0)
+            local diffs = CompareLines(item, off)
+            if #diffs == 0 then GameTooltip:AddLine("No stat change", 0.6, 0.6, 0.6) end
+            for _, d in ipairs(diffs) do GameTooltip:AddLine(d[1], d[2], d[3], d[4]) end
         end
-        for _, d in ipairs(diffs) do GameTooltip:AddLine(d[1], d[2], d[3], d[4]) end
     end
     if extra then
         GameTooltip:AddLine(" ")
         for _, e in ipairs(extra) do GameTooltip:AddLine(e, 0, 1, 0.6, true) end
     end
     GameTooltip:Show()
+    if off then ShowCompare(owner, off) else HideCompare() end
 end
 
 local function NewScreen(name, title)
@@ -153,7 +226,7 @@ local function LockNote(s)
     note:SetHeight(24)
     note:SetPoint("BOTTOMLEFT", 110, 8)
     note:SetPoint("BOTTOMRIGHT", -10, 8)
-    note.text = Label(note, "GameFontNormal", "|cffff6060A run is in progress: gear and talents are locked.|r")
+    note.text = Label(note, "GameFontNormalSmall", "|cffff6060Run in progress: talents and gear are locked (loot from this run can be equipped).|r")
     note.text:SetPoint("LEFT")
     note.btn = Button(note, "Abandon run", 120, 22, function() StaticPopup_Show("MARISCOS_SHELLCRACKER_ABANDON") end)
     note.btn:SetPoint("RIGHT")
@@ -282,6 +355,22 @@ end
 ---------------------------------------------------------------------------
 -- CHARACTER & BAGS
 ---------------------------------------------------------------------------
+local function BagTips(item)
+    local tips = {}
+    if Prog:CanEquipNow(item) then
+        local t = item.slot
+        if t == "FINGER" or t == "TRINKET" then tips[1] = "Left-click to equip (Shift-click: the other " .. ns.ITEM_TYPES[t].name:lower() .. " slot)."
+        elseif t == "1H" then tips[1] = "Left-click to equip (Shift-click: off hand, to dual wield)."
+        elseif t == "2H" then tips[1] = "Left-click to equip. Uses both hands: your off hand comes off."
+        else tips[1] = "Left-click to equip." end
+        if Prog:Locked() then tips[1] = tips[1] .. " Found in this run." end
+    else
+        tips[1] = "|cffff6060Found before this run: it can be equipped once the run is over.|r"
+    end
+    tips[#tips+1] = "Right-click to sell."
+    return tips
+end
+
 function Screens:SellNow(index)
     local ok, item = Prog:Sell(index)
     if ok then
@@ -347,6 +436,7 @@ local function BuildCharacter()
         local b = ItemButton(s, 40)
         b:SetPoint("TOPLEFT", 382 + ((i - 1) % 4) * 46, -34 - floor((i - 1) / 4) * 46)
         b.index = i
+        b.isBagSlot = true
         b:SetScript("OnClick", function(self, button)
             if not self.item then return end
             if button == "RightButton" then
@@ -360,12 +450,8 @@ local function BuildCharacter()
         end)
         b:SetScript("OnEnter", function(self)
             if self.item then
-                local tips = { "Left-click to equip.", "Right-click to sell." }
-                local t = self.item.slot
-                if t == "FINGER" or t == "TRINKET" then tips[1] = "Left-click to equip (Shift-click: the other " .. ns.ITEM_TYPES[t].name:lower() .. " slot)."
-                elseif t == "1H" then tips[1] = "Left-click to equip (Shift-click: off hand, to dual wield)."
-                elseif t == "2H" then tips[1] = "Left-click to equip. Uses both hands: your off hand comes off." end
-                ItemTooltip(self, self.item, tips, true)
+                if self.item.new then self.item.new = nil; ns.UI:UpdateBagButton() end
+                ItemTooltip(self, self.item, BagTips(self.item), true)
             end
         end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -384,7 +470,11 @@ local function BuildCharacter()
     s.refresh = function()
         local d = Prog:Data()
         for _, b in ipairs(s.slots) do b:SetItem(d.gear[b.slot.id], b.slot.tex) end
-        for i, b in ipairs(s.bags) do b:SetItem(d.bags[i]) end
+        local locked = Prog:Locked()
+        for i, b in ipairs(s.bags) do
+            b:SetItem(d.bags[i])
+            if d.bags[i] then b.icon:SetDesaturated(locked and not Prog:FoundThisRun(d.bags[i])) end
+        end
         s.bagCount:SetText(Prog:BagCount() .. " / " .. ns.BAG_SIZE)
         local nb = #Prog:Buyback()
         s.buyback:SetText(nb > 0 and ("Buyback (" .. nb .. ")") or "Buyback")
@@ -671,6 +761,123 @@ end
 ---------------------------------------------------------------------------
 local BUILDERS = { menu = BuildMenu, character = BuildCharacter, talents = BuildTalents, shop = BuildShop }
 
+---------------------------------------------------------------------------
+-- BAGS: the backpack button under the panel opens this beside the game.
+-- Loot is a surprise until you look; items found in this run can be
+-- equipped straight away, anything can be sold.
+---------------------------------------------------------------------------
+local BAG_COLS, BAG_SLOT, BAG_STEP = 8, 38, 42
+local bagWin
+
+local function BuildBags()
+    local main = ns.UI:GetFrame()
+    local ok, w = pcall(CreateFrame, "Frame", "MariscosShellcrackerBags", main, "BasicFrameTemplateWithInset")
+    if not ok or not w then w = CreateFrame("Frame", "MariscosShellcrackerBags", main, BackdropTemplateMixin and "BackdropTemplate") end
+    w:SetSize(14 + BAG_COLS * BAG_STEP + 10, 220)
+    w:SetPoint("BOTTOMLEFT", main, "BOTTOMRIGHT", 4, 0)
+    w:SetFrameStrata("HIGH")
+    w:SetToplevel(true)
+    w:EnableMouse(true)
+    w.title = w.TitleText or (w.TitleContainer and w.TitleContainer.TitleText)
+    if not w.title then
+        w.title = w:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        w.title:SetPoint("TOP", 0, -5)
+    end
+    w.slots = {}
+    for i = 1, ns.BAG_SIZE do
+        local b = ItemButton(w, BAG_SLOT)
+        b:SetPoint("TOPLEFT", 14 + ((i - 1) % BAG_COLS) * BAG_STEP, -32 - floor((i - 1) / BAG_COLS) * BAG_STEP)
+        b.index = i
+        b.isBagSlot = true
+        b.newGlow = b:CreateTexture(nil, "OVERLAY", nil, 2)
+        b.newGlow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+        b.newGlow:SetBlendMode("ADD")
+        b.newGlow:SetVertexColor(1, 0.85, 0.2)
+        b.newGlow:SetPoint("CENTER"); b.newGlow:SetSize(BAG_SLOT * 1.8, BAG_SLOT * 1.8)
+        b.newGlow:Hide()
+        b:SetScript("OnClick", function(self, button)
+            if not self.item then return end
+            self.item.new = nil
+            if button == "RightButton" then
+                local dlg = StaticPopup_Show("MARISCOS_SHELLCRACKER_SELL", Prog:Link(self.item), Prog:Money(self.item.sell))
+                if dlg then dlg.data = self.index end
+            else
+                local ok2, why = Prog:Equip(self.index, IsShiftKeyDown and IsShiftKeyDown())
+                if ok2 then SFX("equip") else Err(why or "") end
+                Screens:Refresh()
+            end
+            Screens:RefreshBags()
+        end)
+        b:SetScript("OnEnter", function(self)
+            if not self.item then return end
+            -- looking at it is enough: it is no longer new
+            if self.item.new then
+                self.item.new = nil
+                self.newGlow:Hide()
+                ns.UI:UpdateBagButton()
+            end
+            ItemTooltip(self, self.item, BagTips(self.item), true)
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        w.slots[i] = b
+    end
+    w.gold = Label(w, "GameFontHighlight")
+    w.gold:SetPoint("TOPLEFT", 16, -122)
+    w.count = Label(w, "GameFontNormal")
+    w.count:SetPoint("TOPRIGHT", -16, -122)
+    w.statsLine = Label(w, "GameFontHighlightSmall")
+    w.statsLine:SetPoint("TOPLEFT", 16, -142)
+    w.statsLine:SetWidth(BAG_COLS * BAG_STEP - 4)
+    w.statsLine:SetJustifyH("LEFT")
+    w.help = Label(w, "GameFontDisableSmall")
+    w.help:SetPoint("TOPLEFT", 16, -176)
+    w.help:SetWidth(BAG_COLS * BAG_STEP - 4)
+    w.help:SetJustifyH("LEFT")
+    w:SetScript("OnShow", function()
+        local sw = _G.MariscosShellcrackerSettings
+        if sw and sw:IsShown() then sw:Hide() end
+        Screens:RefreshBags()
+    end)
+    w:SetScript("OnHide", function() GameTooltip:Hide() end)
+    tinsert(UISpecialFrames, "MariscosShellcrackerBags")
+    w:Hide()
+    return w
+end
+
+function Screens:RefreshBags()
+    if ns.UI.UpdateBagButton then ns.UI:UpdateBagButton() end
+    local w = bagWin
+    if not (w and w:IsShown()) then return end
+    local d = Prog:Data()
+    local locked = Prog:Locked()
+    w.title:SetText(((UnitName and UnitName("player")) or "Your") .. "'s Backpack")
+    for i, b in ipairs(w.slots) do
+        local item = d.bags[i]
+        b:SetItem(item)
+        b.newGlow:SetShown(item ~= nil and item.new == true)
+        if item then b.icon:SetDesaturated(locked and not Prog:FoundThisRun(item)) end
+    end
+    w.gold:SetText(Prog:Money(d.gold))
+    w.count:SetText(Prog:BagCount() .. " / " .. ns.BAG_SIZE)
+    local S, parts = Prog:Mods().stats, {}
+    for _, k in ipairs(ns.STAT_ORDER) do
+        if (S[k] or 0) > 0 then parts[#parts+1] = "|cffffffff" .. S[k] .. "|r " .. ns.STAT_INFO[k].name end
+    end
+    w.statsLine:SetText("|cffffd100Your gear:|r " .. (#parts > 0 and table.concat(parts, ", ") or "|cff888888no stats yet|r"))
+    if locked then
+        w.help:SetText("Left-click: equip an item found in this run (Shift: 2nd ring, trinket or off hand). Right-click: sell. Older items (grey) wait until the run is over.")
+    else
+        w.help:SetText("Left-click: equip (Shift: 2nd ring, trinket or off hand). Right-click: sell. Sold by mistake? Buy it back in the Shop.")
+    end
+end
+
+function Screens:ToggleBags()
+    bagWin = bagWin or BuildBags()
+    if bagWin:IsShown() then bagWin:Hide() else bagWin:Show() end
+end
+
+function Screens:HideBags() if bagWin then bagWin:Hide() end end
+
 function Screens:Show(name, tab)
     for n, fr in pairs(self.frames) do if n ~= name then fr:Hide() end end
     local s = self.frames[name] or BUILDERS[name]()
@@ -692,5 +899,6 @@ end
 function Screens:Refresh()
     local s = self.current and self.frames[self.current]
     if s and s:IsShown() and s.refresh then s.refresh() end
+    self:RefreshBags()
     ns.UI:UpdateHeader()
 end

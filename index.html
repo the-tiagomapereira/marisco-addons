@@ -108,14 +108,20 @@ section { padding-block: 32px; }
 #zoom.pinned { pointer-events: auto; cursor: zoom-out; }
 #zoom img { max-width: min(1280px, 100%); max-height: 100%; border: 1px solid var(--edge); border-radius: 6px; box-shadow: 0 20px 60px #000; }
 .shot span { background: var(--frame); padding: 4px 8px; border-radius: 3px; }
-.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 24px; }
-.cols > div { min-width: 0; }
-h4 { font: 500 13px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-dim); margin: 0 0 12px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 28px; }
+.cols > div { min-width: 0; border-left: 2px solid var(--gold-dim); padding-left: 16px; }
+h4 { font: 500 13px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gold-dim); margin: 0 0 20px; }
 ul.feat { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.mm { margin: 0; display: grid; gap: 6px; }
+.avail { margin: 0 0 4px; color: var(--muted); font-size: 15px; }
+.avail b { color: var(--use); font-weight: 500; }
+.mm div { display: grid; grid-template-columns: 84px 1fr; gap: 10px; font-size: 15px; }
+.mm dt { color: var(--gold); }
+.mm dd { margin: 0; min-width: 0; }
 .cmds { display: flex; flex-wrap: wrap; gap: 6px; }
 .cmds code { background: var(--night); border: 1px solid var(--edge); border-radius: 3px; padding: 4px 7px; color: var(--text); }
 .log { display: grid; gap: 10px; margin: 0; }
-.log div { display: grid; grid-template-columns: 70px 1fr; gap: 12px; }
+.log div { display: grid; grid-template-columns: 54px 1fr; gap: 12px; }
 .log dt { font: 500 13px/1.7 var(--mono); color: var(--gold); font-variant-numeric: tabular-nums; }
 .log dd { margin: 0; min-width: 0; }
 
@@ -150,7 +156,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     <div class="meta">
       <span class="chip">Client <b>1.60.x</b></span>
       <span class="chip">Interface <b>16001</b></span>
-      <span class="chip"><b>7</b> addons</span>
+      <span class="chip"><b>8</b> addons</span>
       <span class="chip">Updated <b>Oct 16, 2026</b></span>
     </div>
     <div class="notice" role="note">
@@ -195,55 +201,62 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
 
 <script>
 const ADDONS = [
-  { id:"cursor", zip:"MariscosCursorTooltip-1.0.zip", name:"Marisco's Cursor Tooltip", ver:"1.0", status:"Release", q:"q-legend", slot:"Tooltip",
+  { id:"cursor", mm:{icon:"spyglass", left:"Open the settings", right:"Turn the cursor ring on or off"}, zip:"MariscosCursorTooltip-1.0.zip", name:"Marisco's Cursor Tooltip", ver:"1.0", status:"Release", q:"q-legend", slot:"Tooltip",
     cmd:"/mct", use:"Anchors every game tooltip to your mouse pointer, exactly where you place it.",
     flavor:"\"The tooltip goes where you look.\"",
     feat:["Drag-and-drop position setup around a preview pointer","Cursor ring with color, opacity, radius and a click pulse","Fading cursor trail (beta)","Flips to the other side near screen edges"],
     cmds:["/mct","/mct ring","/mct pulse","/mct trail","/mct follow","/mct stick","/mct reset"],
     shots:[{src:"shots/cursor-1.jpg", cap:"Settings screen with the preview circle"},{src:"shots/cursor-2.jpg", cap:"Tooltip next to the pointer, with the Item Value Scanner panel"},{src:"shots/cursor-3.jpg", cap:"Cursor ring with the fading trail"}],
     log:[["1.0","Window title centered; first full release."],["0.7.2","Sliders restyled with the value in yellow."],["0.6","Optional click pulse on the cursor ring."]] },
-  { id:"loot", zip:"MariscosLootCascade-1.0.zip", name:"Marisco's Loot Cascade", ver:"1.0", status:"Release", q:"q-legend", slot:"Loot",
+  { id:"loot", mm:{icon:"backpack", left:"Open the settings", right:"Show sample loot"}, zip:"MariscosLootCascade-1.0.zip", name:"Marisco's Loot Cascade", ver:"1.0", status:"Release", q:"q-legend", slot:"Loot",
     cmd:"/mlc", use:"Replaces the loot window with a cascading feed of cards, one per item, that fade away.",
     flavor:"\"Everything at once. Nothing missed.\"",
     feat:["Loots everything instantly, one rounded card per item","Quality-colored rim and ring, bag count in gray","Rare and better items stay on screen longer","Shift still opens the normal window for picking by hand"],
     cmds:["/mlc config","/mlc test","/mlc replace","/mlc scale <n>","/mlc quality <0-5>"],
     shots:["Cards mid-cascade after a boss","Sample loot: gray to Thunderfury","Settings with the cyan position box"],
     log:[["1.0","Title centered in the title bar; first full release."],["0.11","Fade timer as 3 / 5 / 8 s, rarity screen time toggle."],["0.2","Fixed a Lua error on loot in the Forever client."]] },
-  { id:"shell", zip:"MariscosShellcracker-0.12.1.zip", name:"Marisco's Shellcracker", ver:"0.12.1", status:"Beta", q:"q-rare", slot:"Game",
+  { id:"shell", mm:{icon:"crab", left:"Open the game", right:"Print your best scores"}, zip:"MariscosShellcracker-1.0.zip", name:"Marisco's Shellcracker", ver:"1.0", status:"Release", q:"q-legend", slot:"Game",
     cmd:"/shell", use:"A match-3 game played with Azeroth's gems. Every match hits the makrura in front of you.",
     flavor:"\"From Durotar to Tidefury Cove, one cascade at a time.\"",
-    feat:["Bejeweled 3 special gems: Flame, Star, Hypercube, Supernova","Ten makrura, endless tides after Lord Angler","Levels 1–60, three talent trees, gear and 8 legendaries","Leaderboard across all your characters"],
+    feat:["Bejeweled 3 special gems: Flame, Star, Hypercube, Supernova","Ten makrura, endless tides after Lord Angler","Levels 1–60, three talent trees, gear and 8 legendaries","Backpack beside the board: equip new loot mid-run","Leaderboard across all your characters"],
     cmds:["/shell","/shell new","/shell talents","/shell shop","/shell board","/shell config"],
     shots:["The board against Makrura Snapclaw","Talent trees","Character & Bags with a legendary"],
-    log:[["0.12.1","Fixed the \"blocked from an action\" error when pressing Esc or opening Options."],["0.12","Full WoW gear slots, dual wielding and shields."],["0.11","New stats, six rarities, Loot-Crazed Makrura."]] },
-  { id:"hoarder", zip:"MariscosMiniMapButtonHoarder-0.5.zip", name:"Marisco's MiniMapButtonHoarder", ver:"0.5", status:"Beta", q:"q-rare", slot:"Minimap",
+    log:[["1.0","First full release."],["0.13.1","Currently Equipped comparison tooltips and gear stats in the bags."],["0.13","Backpack beside the board; equip and sell loot mid-run."]] },
+  { id:"hoarder", mm:{icon:"lockbox", left:"Show or hide the hoarded buttons", right:"Open the settings"}, zip:"MariscosMiniMapButtonHoarder-0.5.zip", name:"Marisco's MiniMapButtonHoarder", ver:"0.5", status:"Beta", q:"q-rare", slot:"Minimap",
     cmd:"/mmbh", use:"One minimap button holds all the others. Click and they slide out in the layout you pick.",
     flavor:"\"A tidy rim is a happy rim.\"",
     feat:["Five layouts with animated previews: Arch, Triangle, Boxed, Horizontal, Vertical","Hover zoom on the button under the pointer","Centers and fills every icon in its round border","Gives every button back exactly as its addon wants"],
     cmds:["/mmbh","/mmbh config","/mmbh layout arch","/mmbh scan","/mmbh ignore <name>"],
     shots:["Buttons fanned out in the Arch","Layout previews in the settings","Before and after: tidy icons"],
     log:[["0.5","Icons centered in their border, no more dark crescent."],["0.4","Hover zoom with its own size slider."],["0.3","Settings window and five layouts."]] },
-  { id:"scanner", zip:"MariscosItemValueScanner-0.9.zip", name:"Marisco's Item Value Scanner", ver:"0.9", status:"Beta", q:"q-rare", slot:"Auction",
+  { id:"scanner", mm:{icon:"Arcane Intellect", left:"Show or hide the Scan AH button", right:"Print last-scan info"}, zip:"MariscosItemValueScanner-0.9.zip", name:"Marisco's Item Value Scanner", ver:"0.9", status:"Beta", q:"q-rare", slot:"Auction",
     cmd:"/mivs", use:"Scans the Auction House and shows vendor price, AH price and disenchant value under every tooltip.",
     flavor:"\"Sell it, shard it, or vendor it?\"",
     feat:["Safe batched scan with no 15-minute limit","Vendor, AH and difference with a live last-scan timer","Disenchant materials, expected value and the best option","Prices stored per realm and faction"],
     cmds:["/mivs scan","/mivs fast","/mivs de","/mivs status"],
     shots:["Scan AH button on the Auction House","Value panel under an item tooltip","Disenchant breakdown on a blue"],
     log:[["0.9","Panel stays clear of the comparison tooltips."]] },
-  { id:"psl", zip:"ProfessionShoppingList-0.25.zip", name:"Marisco's Profession Shopping List", ver:"0.25", status:"Beta", q:"q-rare", slot:"Professions",
+  { id:"psl", mm:{icon:"note", left:"Open the shopping list", right:"Open the settings"}, zip:"ProfessionShoppingList-0.25.zip", name:"Marisco's Profession Shopping List", ver:"0.25", status:"Beta", q:"q-rare", slot:"Professions",
     cmd:"/psl", use:"Pick profession materials into a shopping list beside the Auction House and see what it all costs.",
     flavor:"\"Know the bill before you skill.\"",
     feat:["Materials per profession, with search, source filter and grid view","Scan the whole list in one go: total, gold you carry, gold left after","Vendor or Auction House, whichever is cheaper, marked per item","Leveling guides for 8 professions that fill the list in one click"],
     cmds:["/psl","/psl add <item>","/psl scan","/psl guide","/psl notes","/psl settings"],
     shots:["Shopping list docked to the Auction House","Leveling guide profession grid","Leatherworking 1-225 plan with costs"],
     log:[["0.25","Check for updates button in the leveling guide."],["0.24","Skill bars for your own professions."],["0.19","Guides for seven more professions."]] },
-  { id:"bridge", zip:"MariscosLayoutBridge-0.2.zip", name:"Marisco's Layout Bridge", ver:"0.2", status:"Alpha", q:"q-poor", slot:"Edit Mode",
+  { id:"bridge", mm:{icon:"map", left:"Open the converter", right:null}, zip:"MariscosLayoutBridge-0.2.zip", name:"Marisco's Layout Bridge", ver:"0.2", status:"Alpha", q:"q-poor", slot:"Edit Mode",
     cmd:"/mlb", use:"Converts retail Edit Mode layout strings so Forever accepts them, blended with one of your layouts. Alpha: not reliable yet, best tried on simple layouts.",
     flavor:"\"Retail positions, Forever frames.\"",
     feat:["Fixes the header that makes Forever reject retail strings","Pick which parts to take: bars, unit frames, chat, minimap…","Untouched frames keep your own positions","Frames pulled back on screen; output ready to Import"],
     cmds:["/mlb","/mlb debug","/mlb minimap"],
     shots:["Converter window with both boxes","Report after a conversion","Imported layout in Edit Mode"],
     log:[["0.2","Template picker and group checkboxes."],["0.1.3","Fixed the interfaceStyle error on import."]] }
+  { id:"companion", mm:{icon:"pet carrier", left:"Open the window", right:"Print your companion's status"}, zip:"MariscosCompanionKeeper-0.1.zip", name:"Marisco's Companion Keeper", ver:"0.1", status:"Alpha", q:"q-poor", slot:"Companions",
+    cmd:"/mck", use:"Reads your Companion Journal and lets you choose a companion to look after. Alpha: happiness, feeding and play come next.",
+    flavor:"\"Every pet deserves a keeper.\"",
+    feat:["Every companion you own, with search","3D preview you can drag to turn","Choose your companion; the minimap button shows its icon","Your summoned pet in the world is never touched"],
+    cmds:["/mck","/mck probe","/mck scan","/mck status","/mck minimap","/mck reset"],
+    shots:["Companion list with the 3D preview","Chosen companion marked in the list","Minimap button with your companion's icon"],
+    log:[["0.1","First alpha: companion list, 3D preview, choose your companion."]] },
 ];
 
 const bag = document.getElementById("bag");
@@ -279,8 +292,9 @@ function open(id, scroll) {
     <div class="shots">${a.shots.map(s => typeof s === "string" ? `<div class="shot"><span>Screenshot: ${esc(s)}</span></div>` : `<div class="shot img" tabindex="0" data-src="${s.src}" title="${esc(s.cap)}"><img src="${s.src}" alt="${esc(s.cap)}" loading="lazy"></div>`).join("")}</div>
     <div class="cols">
       <div><h4>What it does</h4><ul class="feat">${a.feat.map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>
-      <div><h4>Commands</h4><div class="cmds">${a.cmds.map(c => `<code>${esc(c)}</code>`).join("")}</div></div>
+      ${a.mm ? `<div><h4>Minimap button</h4><p class="avail"><b>Available</b> · ${esc(a.mm.icon)} icon on the minimap</p><dl class="mm"><div><dt>Left-click</dt><dd>${esc(a.mm.left)}</dd></div>${a.mm.right ? `<div><dt>Right-click</dt><dd>${esc(a.mm.right)}</dd></div>` : ""}<div><dt>Drag</dt><dd>Move it around the minimap</dd></div></dl></div>` : ""}
       <div><h4>Release notes</h4><dl class="log">${a.log.map(([v,t]) => `<div><dt>${v}</dt><dd>${esc(t)}</dd></div>`).join("")}</dl></div>
+      <div><h4>Commands</h4><div class="cmds">${a.cmds.map(c => `<code>${esc(c)}</code>`).join("")}</div></div>
     </div></div>`;
   try { localStorage.setItem("mads-open", a.id); } catch (e) {}
   if (scroll) detail.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
