@@ -4,8 +4,8 @@
 
 local ADDON, ns = ...
 
-ns.VERSION = "0.2"
-ns.VERSION_LABEL = "v0.2 Beta"
+ns.VERSION = "0.3.1"
+ns.VERSION_LABEL = "v0.3.1 Beta"
 ns.TITLE = "Marisco's Minimap Unbound"
 ns.ICON = "Interface\\Icons\\Ability_Hunter_EagleEye"
 
@@ -27,6 +27,9 @@ ns.DEFAULTS = {
   barSide = "original",       -- original | above | below (parts still on the bar)
   coordMode = "auto",         -- auto (Forever's own) | own | hidden
   parts = {},                 -- parts moved on their own: key -> { point, x, y }
+  partOpts = {},              -- per part: { scale, hidden, above (nil = follow the global setting) }
+  partNames = {},             -- names given to parts in the settings
+  above = false,              -- set parts above the minimap
   clamp = false,
   snap = true,
   hideZoom = false,
@@ -262,6 +265,121 @@ local function FindCoords(exclude)
   return found, "text " .. DebugName(found)
 end
 
+---------------------------------------------------------------------------
+-- Per-part options: scale, shown, layer (above the map or stock)
+---------------------------------------------------------------------------
+local EMPTY = {}
+
+function ns.PartOpts(key, create)
+  local t = ns.db.partOpts[key]
+  if not t and create then
+    t = {}
+    ns.db.partOpts[key] = t
+  end
+  return t or EMPTY
+end
+
+-- a part's own choice wins; otherwise the global "Set parts above the minimap"
+local function IsAbove(key)
+  local o = ns.db.partOpts[key]
+  if o and o.above ~= nil then return o.above end
+  return ns.db.above and true or false
+end
+ns.IsAbove = IsAbove
+
+-- what the game had before we touched it, to put it back exactly
+local function CaptureExtras(p)
+  local o = p.obj
+  p.isRegion = not o.GetFrameStrata
+  p.parent = o:GetParent()
+  p.scale = o.GetScale and o:GetScale() or 1
+  p.strata = (not p.isRegion) and o:GetFrameStrata() or nil
+  p.mouse = (o.IsMouseEnabled and o:IsMouseEnabled()) and true or false
+end
+
+-- A part inside another part (the zone name inside the top bar) already gets that part's
+-- scale from its parent, so it is divided out again.
+local function AncestorScale(obj, self)
+  local f = 1
+  for _, part in ipairs(partList) do
+    if part ~= self and IsDescendant(obj, part.piece.obj) then
+      f = f * ((ns.db.partOpts[part.key] or EMPTY).scale or 1)
+    end
+  end
+  return f
+end
+
+-- which parts sit inside others: parents first, and hiding a parent only hides its own
+-- textures so the parts inside it stay visible
+local function ComputeTree()
+  for _, part in ipairs(partList) do part.depth, part.hasChildParts = 0, false end
+  for _, part in ipairs(partList) do
+    for _, other in ipairs(partList) do
+      if other ~= part and IsDescendant(part.piece.obj, other.piece.obj) then
+        part.depth = part.depth + 1
+        other.hasChildParts = true
+      end
+    end
+  end
+  if stock then
+    for _, p in ipairs(stock.pieces) do
+      if p.group == "coords" then
+        for _, other in ipairs(partList) do
+          if IsDescendant(p.obj, other.piece.obj) then other.hasChildParts = true end
+        end
+      end
+    end
+  end
+  table.sort(partList, function(a, b)
+    if a.depth ~= b.depth then return a.depth < b.depth end
+    return a.key < b.key
+  end)
+end
+
+local function StylePiece(p, holder, scale, above, shown, ownOnly)
+  local o = p.obj
+  if p.isRegion then
+    -- a bare text or texture can't change layer itself: it moves into its holder instead
+    local target = above and holder or p.parent
+    if target and o:GetParent() ~= target then o:SetParent(target) end
+  elseif o.SetFrameStrata and p.strata then
+    o:SetFrameStrata(above and "MEDIUM" or p.strata)
+  end
+  if o.SetScale then pcall(o.SetScale, o, (p.scale or 1) * scale) end
+  if ownOnly then
+    p.regionAlpha = p.regionAlpha or {}
+    for _, r in ipairs({ o:GetRegions() }) do
+      local isPiece = false
+      for _, q in ipairs(stock.pieces) do if q.obj == r then isPiece = true break end end
+      if not isPiece then
+        if p.regionAlpha[r] == nil then p.regionAlpha[r] = r:GetAlpha() end
+        r:SetAlpha(shown and p.regionAlpha[r] or 0)
+      end
+    end
+    o:SetAlpha(p.alpha or 1)
+  else
+    o:SetAlpha(shown and (p.alpha or 1) or 0)
+  end
+  if not p.isRegion and p.mouse and o.EnableMouse then o:EnableMouse(shown and true or false) end
+end
+
+local function UnstylePiece(p)
+  local o = p.obj
+  if p.isRegion and p.parent and o:GetParent() ~= p.parent then o:SetParent(p.parent) end
+  if not p.isRegion and p.strata and o.SetFrameStrata then o:SetFrameStrata(p.strata) end
+  if o.SetScale and p.scale then pcall(o.SetScale, o, p.scale) end
+  if p.regionAlpha then for r, a in pairs(p.regionAlpha) do r:SetAlpha(a) end end
+  if not p.isRegion and p.mouse and o.EnableMouse then o:EnableMouse(true) end
+  o:SetAlpha(p.alpha or 1)
+end
+
+function ns.PartChoices()
+  local list = { { key = "coords", label = (ns.db.partNames.coords ~= nil and ns.db.partNames.coords ~= "")
+    and ns.db.partNames.coords or "Coordinates" } }
+  for _, part in ipairs(partList) do list[#list + 1] = { key = part.key, label = ns.PartLabel(part) } end
+  return list
+end
+
 local FRIENDLY = {
   BorderTop = "Top bar", MinimapBorderTop = "Top bar",
   ZoneTextButton = "Zone name", MinimapZoneTextButton = "Zone name",
@@ -272,6 +390,52 @@ local FRIENDLY = {
   InstanceDifficulty = "Instance difficulty", MiniMapInstanceDifficulty = "Instance difficulty",
   AddonCompartmentFrame = "Addon compartment", ExpansionLandingPageMinimapButton = "Landing page button",
 }
+-- A frame without a name of its own gets an id from where it sits: its parent's key for it
+-- (MinimapCluster.BorderTop), or its place among its parent's children (MinimapCluster/Frame3).
+-- Unlike the frame's memory address, that is the same at every login, so its settings stick.
+local function StableKey(obj, depth)
+  depth = depth or 0
+  local n = obj.GetName and obj:GetName()
+  if n and n ~= "" then return n end
+  local parent = obj.GetParent and obj:GetParent()
+  if not parent or depth > 6 then return DebugName(obj) end
+  local pkey = StableKey(parent, depth + 1)
+  for k, v in pairs(parent) do
+    if v == obj and type(k) == "string" then return pkey .. "." .. k end
+  end
+  local kind = obj:GetObjectType()
+  local list = (kind == "Texture" or kind == "FontString") and { parent:GetRegions() } or { parent:GetChildren() }
+  local i = 0
+  for _, c in ipairs(list) do
+    if c.GetObjectType and c:GetObjectType() == kind then i = i + 1 end
+    if c == obj then return pkey .. "/" .. kind .. i end
+  end
+  return DebugName(obj)
+end
+
+-- the sun/moon circle has no name: recognise it by its artwork
+local function LooksLikeDayNight(obj)
+  if not obj.GetRegions then return false end
+  for _, r in ipairs({ obj:GetRegions() }) do
+    if r.GetObjectType and r:GetObjectType() == "Texture" then
+      local a = r.GetAtlas and r:GetAtlas()
+      local t = r.GetTexture and r:GetTexture()
+      local txt = (tostring(a or "") .. " " .. tostring(t or "")):lower()
+      if txt:find("daynight") or txt:find("day%-night") or txt:find("sun") or txt:find("moon")
+         or txt:find("timeofday") or txt:find("gametime") then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+function ns.PartLabel(part)
+  local custom = ns.db.partNames and ns.db.partNames[part.key]
+  if custom and custom ~= "" then return custom end
+  return part.label
+end
+
 local function Friendly(key)
   local last = key:gsub("#%d+$", ""):match("([^%.]+)$") or key
   return FRIENDLY[last] or last
@@ -297,6 +461,7 @@ local function Snapshot()
     seen[obj] = true
     table.insert(st.pieces, { obj = obj, group = group, ring = ring, rect = r, points = GetPoints(obj),
                               alpha = obj:GetAlpha() })
+    CaptureExtras(st.pieces[#st.pieces])
     return true
   end
 
@@ -363,6 +528,8 @@ local function LookForCoordsLater()
           r = { l = stock.map.l + stock.map.w / 2 + cx - r.w / 2, b = stock.map.b + stock.map.h / 2 + cy - r.h / 2, w = r.w, h = r.h }
         end
         table.insert(stock.pieces, { obj = obj, group = "coords", rect = r, points = GetPoints(obj), alpha = obj:GetAlpha() })
+        CaptureExtras(stock.pieces[#stock.pieces])
+        ComputeTree()
         stock.coords = r
         stock.coordHow = how .. " (found later)"
         Hook(obj)
@@ -483,27 +650,38 @@ local function ApplyInner()
 
   -- every other part sits in its own holder: on its stock spot, or wherever it was moved
   for _, part in ipairs(partList) do
+    local o = db.partOpts[part.key] or EMPTY
+    local s = o.scale or 1
     local h, r = part.holder, part.rect
-    h:SetSize(r.w, r.h)
+    local w, hh = r.w * s, r.h * s
+    local above = IsAbove(part.key)
+    h:SetSize(w, hh)
+    h:SetFrameStrata(above and "MEDIUM" or (stock.mapStrata or "LOW"))
     h:ClearAllPoints()
     local free = db.parts[part.key]
     if free then
       Place(h, free)
     elseif part.group == "bar" and barRect then
-      h:SetPoint("TOPLEFT", bar, "TOPLEFT", r.l - barRect.l, (r.b + r.h) - (barRect.b + barRect.h))
+      h:SetPoint("CENTER", bar, "TOPLEFT", r.l + r.w / 2 - barRect.l, (r.b + r.h / 2) - (barRect.b + barRect.h))
     else
       local cx = (r.l + r.w / 2) - (stock.map.l + stock.map.w / 2)
       local cy = (r.b + r.h / 2) - (stock.map.b + stock.map.h / 2)
       h:SetPoint("CENTER", map, "CENTER", cx * ratio, cy * ratio)
     end
-    Anchor(part.piece.obj, h, "TOPLEFT", 0, 0, r.w, r.h)
+    StylePiece(part.piece, h, s / AncestorScale(part.piece.obj, part), above, not o.hidden, part.hasChildParts)
+    Anchor(part.piece.obj, h, "TOPLEFT", 0, 0, w, hh)
   end
 
   -- coordinates: Forever's, this addon's, or hidden; one part either way
+  local co = db.partOpts.coords or EMPTY
+  local cs = co.scale or 1
+  local cAbove = IsAbove("coords")
+  local cVisible = db.coordMode ~= "hidden" and not co.hidden
   local useOwn = db.coordMode == "own" or (db.coordMode == "auto" and not coordRect)
   local cw, ch
   if coordRect and not useOwn then cw, ch = coordRect.w, coordRect.h else cw, ch = 72, 14 end
-  coords:SetSize(cw, ch)
+  coords:SetSize(cw * cs, ch * cs)
+  coords:SetFrameStrata(cAbove and "MEDIUM" or (stock.mapStrata or "LOW"))
   coords:ClearAllPoints()
   if db.parts.coords then
     Place(coords, db.parts.coords)
@@ -517,16 +695,19 @@ local function ApplyInner()
   for _, p in ipairs(stock.pieces) do
     if p.group == "coords" then
       local r = p.rect
+      StylePiece(p, coords, cs / AncestorScale(p.obj), cAbove, cVisible and not useOwn, false)
       if useOwn then
-        Anchor(p.obj, coords, "CENTER", -r.w / 2, r.h / 2, r.w, r.h)
+        Anchor(p.obj, coords, "CENTER", -r.w * cs / 2, r.h * cs / 2, r.w * cs, r.h * cs)
       else
-        Anchor(p.obj, coords, "TOPLEFT", r.l - coordRect.l, (r.b + r.h) - (coordRect.b + coordRect.h), r.w, r.h)
+        Anchor(p.obj, coords, "TOPLEFT", (r.l - coordRect.l) * cs, ((r.b + r.h) - (coordRect.b + coordRect.h)) * cs,
+          r.w * cs, r.h * cs)
       end
-      p.obj:SetAlpha(useOwn and 0 or (p.alpha or 1))
     end
   end
-  coords:SetShown(db.coordMode ~= "hidden")
-  ownCoords:SetShown(useOwn and db.coordMode ~= "hidden")
+  coords:Show() -- always there, so its box can be found while editing
+  if ownCoords.SetTextScale then pcall(ownCoords.SetTextScale, ownCoords, cs)
+  elseif ownCoords.SetScale then pcall(ownCoords.SetScale, ownCoords, cs) end
+  ownCoords:SetShown(useOwn and cVisible)
   UpdateOwnCoords()
 
   -- screen clamp: off by default, which is the whole point
@@ -585,6 +766,7 @@ function ns.Restore()
   applying = true
   Safe(function()
     for _, p in ipairs(stock.pieces) do
+      if not p.ring then UnstylePiece(p) end
       p.obj:ClearAllPoints()
       for _, pt in ipairs(p.points) do p.obj:SetPoint(unpack(pt)) end
       p.obj:SetAlpha(p.alpha or 1)
@@ -663,11 +845,15 @@ end
 local function ShowPartTooltip(o)
   local part = o.part
   GameTooltip:SetOwner(o, "ANCHOR_TOP")
-  GameTooltip:AddLine(part.label)
+  GameTooltip:AddLine(ns.PartLabel(part))
   if part.key == "map" then
     GameTooltip:AddLine(IsFree("map") and "Moved" or "On its stock spot", 0.7, 0.7, 0.7)
   else
     GameTooltip:AddLine(IsFree(part.key) and "Moved on its own" or "Moves with the minimap", 0.7, 0.7, 0.7)
+    local po = ns.db.partOpts[part.key]
+    if po and po.hidden then GameTooltip:AddLine("Turned off in the settings", 1, 0.4, 0.4) end
+    if po and po.scale and po.scale ~= 1 then GameTooltip:AddLine(string.format("Scale %d%%", po.scale * 100 + 0.5), 0.7, 0.7, 0.7) end
+    GameTooltip:AddLine(IsAbove(part.key) and "Above the minimap" or "Stock layer", 0.7, 0.7, 0.7)
     if part.piece and not part.piece.obj:IsShown() then
       GameTooltip:AddLine("Hidden right now (shows when the game needs it)", 0.7, 0.7, 0.7, true)
     end
@@ -677,6 +863,7 @@ local function ShowPartTooltip(o)
   if part.key ~= "map" then GameTooltip:AddLine("Shift + drag: move only this part", 1, 1, 1) end
   GameTooltip:AddLine("Arrow keys: 1 px (Ctrl: 10 px, Shift: only this part)", 1, 1, 1, true)
   GameTooltip:AddLine(part.key == "map" and "Right-click: back to the stock spot" or "Right-click: put it back", 1, 1, 1)
+  GameTooltip:AddLine(part.key == "map" and "Click: settings" or "Click: this part's settings (scale, show, layer)", 1, 1, 1)
   GameTooltip:Show()
 end
 
@@ -702,7 +889,7 @@ local function MakeOverlay(part)
   end
   local fs = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   fs:SetPoint("CENTER")
-  fs:SetText(part.label)
+  fs:SetText(ns.PartLabel(part))
   o.text = fs
 
   o:SetScript("OnDragStart", function(self)
@@ -710,6 +897,7 @@ local function MakeOverlay(part)
     local h, key = Target(part, IsShiftKeyDown())
     h:StartMoving()
     self.drag = { h = h, key = key }
+    self.dragged = true
     GameTooltip:Hide()
   end)
   o:SetScript("OnDragStop", function(self)
@@ -724,6 +912,9 @@ local function MakeOverlay(part)
     if btn == "RightButton" then
       PutBack(part)
       if self:IsMouseOver() then ShowPartTooltip(self) end
+    elseif btn == "LeftButton" then
+      if self.dragged then self.dragged = false return end
+      if ns.SelectPart then ns.Safe(ns.SelectPart, part.key) end
     end
   end)
   o:SetScript("OnEnter", function(self)
@@ -766,8 +957,10 @@ function ns.UpdateOverlays()
       local free = IsFree(part.key) and part.key ~= "map"
       local r, g, b = 0, 0.8, 1
       if free then r, g, b = 1, 0.75, 0.1 end
-      o.bg:SetColorTexture(r, g, b, o.hover and 0.45 or 0.22)
+      local selected = ns.IsConfigShown and ns.IsConfigShown() and ns.selectedPart == part.key
+      o.bg:SetColorTexture(r, g, b, (o.hover or selected) and 0.45 or 0.22)
       for _, t in ipairs(o.edges) do t:SetColorTexture(r, g, b, 0.95) end
+      o.text:SetText(ns.PartLabel(part))
       local rect = UIRect(part.holder)
       o.text:SetShown(rect and rect.w >= 50 and rect.h >= 12 or false)
     end
@@ -890,8 +1083,8 @@ local function CreateButton()
   icon:SetPoint("TOPLEFT", 7, -6)
 
   button:SetScript("OnClick", function(_, b)
-    if b == "RightButton" then ns.ToggleConfig()
-    else ns.SetMoveMode(not moveMode) end
+    if b == "RightButton" then ns.SetMoveMode(not moveMode)
+    else ns.ToggleConfig() end
   end)
   button:SetScript("OnDragStart", function(self)
     self:SetScript("OnUpdate", function()
@@ -906,8 +1099,8 @@ local function CreateButton()
   button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine(ns.TITLE)
-    GameTooltip:AddLine("Left-click: edit the layout " .. (moveMode and "(on)" or "(off)"), 1, 1, 1)
-    GameTooltip:AddLine("Right-click: settings", 1, 1, 1)
+    GameTooltip:AddLine("Left-click: settings", 1, 1, 1)
+    GameTooltip:AddLine("Right-click: edit the layout " .. (moveMode and "(on)" or "(off)"), 1, 1, 1)
     GameTooltip:AddLine("Drag: move this button", 1, 1, 1)
     GameTooltip:Show()
   end)
@@ -964,7 +1157,8 @@ function ns.BuildReport()
     add("")
     add("== Parts (each movable on its own) ==")
     for _, part in ipairs(partList) do
-      add(string.format("  %s = %s, %s", part.label, part.key, ns.db.parts[part.key] and "moved" or "on its stock spot"))
+      add(string.format("  %s = %s (%s), %s", ns.PartLabel(part), part.key, DebugName(part.piece.obj),
+        ns.db.parts[part.key] and "moved" or "on its stock spot"))
     end
     add("  Coordinates = coords, " .. (ns.db.parts.coords and "moved" or "on its stock spot"))
     add("bar rect " .. RectText(stock.bar))
@@ -1021,19 +1215,28 @@ local function Init()
   if ns.CreateSkinLayers then ns.CreateSkinLayers(holders.map) end
 
   -- one holder per part (everything but the map, its round border and the coordinates)
-  local used = {}
+  local used, unnamed = {}, 0
   for _, p in ipairs(stock.pieces) do
     if not p.ring and p.group ~= "coords" then
-      local key = DebugName(p.obj)
+      local key = StableKey(p.obj)
       if used[key] then key = key .. "#" .. (#partList + 1) end
       used[key] = true
       local h = CreateFrame("Frame", nil, UIParent)
       h:SetMovable(true)
       h:SetClampedToScreen(false)
       h:SetSize(p.rect.w, p.rect.h)
-      partList[#partList + 1] = { key = key, holder = h, label = Friendly(key), group = p.group, piece = p, rect = p.rect }
+      local label = Friendly(key)
+      if LooksLikeDayNight(p.obj) and p.obj ~= GameTimeFrame then
+        label = "Day/Night Cycle"
+      elseif label:find("/") or label:match("^%x+$") then
+        unnamed = unnamed + 1
+        label = unnamed > 1 and ("Unnamed part " .. unnamed) or "Unnamed part"
+      end
+      partList[#partList + 1] = { key = key, holder = h, label = label, group = p.group, piece = p, rect = p.rect }
     end
   end
+
+  ComputeTree()
 
   Hook(Minimap)
   for _, p in ipairs(stock.pieces) do Hook(p.obj) end
@@ -1157,7 +1360,8 @@ end
 
 function ns.LoadDefaults()
   local db = ns.db
-  local keep = { pos = db.pos, parts = db.parts, button = db.button, configPos = db.configPos, enabled = db.enabled }
+  local keep = { pos = db.pos, parts = db.parts, partNames = db.partNames, button = db.button, configPos = db.configPos,
+                 enabled = db.enabled }
   for k in pairs(db) do db[k] = nil end
   FillDefaults(db, ns.DEFAULTS)
   for k, v in pairs(keep) do db[k] = v end

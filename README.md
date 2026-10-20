@@ -16,7 +16,7 @@ All addons are for **World of Warcraft: Forever 1.60.x** (interface 16001).
 | [Marisco's Profession Shopping List](ProfessionShoppingList/README.md) | 0.25 Beta | Profession materials shopping list with Auction House prices and leveling guides |
 | [Marisco's Layout Bridge](MariscosLayoutBridge/README.md) | 0.2 Alpha | Converts retail Edit Mode layout strings for Forever |
 | [Marisco's Companion Keeper](MariscosCompanionKeeper/README.md) | 0.7.1 Beta | Look after a companion: daily challenges, petting, fetch and walks together |
-| [Marisco's Minimap Unbound](MariscosMinimapUnbound/README.md) | 0.2 Beta | Move the minimap and each part around it anywhere; square shape and border skins |
+| [Marisco's Minimap Unbound](MariscosMinimapUnbound/README.md) | 0.3.1 Beta | Move the minimap and each part around it anywhere; square shape and border skins |
 
 ### For development
 

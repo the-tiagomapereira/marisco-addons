@@ -1,12 +1,12 @@
-# Marisco's Minimap Unbound — v0.2 - Beta
+# Marisco's Minimap Unbound — v0.3.1 - Beta
 
 For World of Warcraft: Forever 1.60.x (interface 16001).
 
 Takes the stock minimap out of Edit Mode's screen-clamped cluster and splits it into parts you
 can place one by one: the map, the top bar, the zone name, the tracking (search glass) button, the
-clock, the calendar, the coordinates and anything else Forever puts there (mail indicator...).
+clock, the calendar, the Day/Night Cycle circle, the coordinates and anything else Forever puts there (mail indicator...).
 Move the whole minimap flush against the screen edge or past it, or put any part wherever you
-like. Adds a square shape and border skins.
+like, at its own scale, above the map or not, or turned off. Adds a square shape and border skins.
 
 ## Why Edit Mode stops short of the edge
 Edit Mode moves the whole minimap cluster: map, top bar, coordinates and some empty padding.
@@ -23,7 +23,7 @@ see is still a few pixels away. This addon moves each visible part in its own un
 ## Use
 - On login the minimap looks exactly like before: the addon measures the stock layout first and
   rebuilds it in the same spot.
-- **Edit the layout**: left-click the minimap button (eagle-eye icon), the **Edit layout** button in
+- **Edit the layout**: right-click the minimap button (eagle-eye icon), the **Edit layout** button in
   the settings, or `/mmu edit`. Every part gets a highlight box and a small bar at the top of the
   screen explains the controls:
   - **Drag** any part: the whole minimap moves (every part that is still on it comes along).
@@ -31,6 +31,8 @@ see is still a few pixels away. This addon moves each visible part in its own un
     the map to wherever you want them.
   - **Right-click** a part: it goes back to its stock spot on the minimap.
     Right-click the map: the whole minimap goes back to its stock spot.
+  - **Click** a part (without dragging): the settings open on that part (scale, show, layer).
+    While the settings are open, the chosen part's box is brighter.
   - **Arrow keys** while hovering a box: 1 px (Ctrl: 10 px). Hold Shift to nudge only that part.
   - Boxes are **cyan** for parts that move with the minimap and **gold** for parts moved on
     their own. Smaller parts sit on top, so a button on the bar can be grabbed instead of the bar.
@@ -65,6 +67,20 @@ everything since the window opened.
   are still on the minimap.
 - **Coordinates**: Forever's own, this addon's own readout, or Hidden. If Forever's coordinates
   can't be found (they're blank in instances), Auto uses the addon's own.
+- **Set parts above the minimap**: every part draws over the map, so a part dragged onto the map
+  stays visible instead of hiding behind it. Each part can override this (see Parts).
+
+**Parts** (pick one with < >, or click its box while editing the layout)
+- **Name**: rename the part (Enter to keep it, empty for the original name). Parts the game
+  leaves unnamed get a stable id, so their settings stay after a restart; the sun/moon circle is
+  recognised as "Day/Night Cycle", any other one shows as "Unnamed part".
+- **Show this part**: off hides it (and makes it unclickable). Turning off a part that holds others
+  (the top bar holds the zone name and clock) only hides its own background; the parts inside
+  stay.
+- **Scale**: 50% to 200%. Parts on the minimap grow from their center.
+- **Layer**: Default (follows "Set parts above the minimap"), Above map, or Stock (Blizzard's
+  layer, behind the map).
+- **Reset this part**: scale, show, layer and position back to stock.
 
 **Placement**
 - **Keep on screen** (off by default, so the map can touch or pass the edge).
@@ -72,7 +88,7 @@ everything since the window opened.
 - **Reset everything to the stock spot**: the map and every part.
 
 ## Minimap button
-- Left-click: edit the layout on/off · Right-click: settings · Drag: move the button around the map
+- Left-click: settings · Right-click: edit the layout on/off · Drag: move the button around the map
   (follows the square edge too). `/mmu minimap` hides or shows it.
 - It's a normal named button, so MiniMapButtonHoarder picks it up.
 
@@ -103,6 +119,13 @@ everything since the window opened.
 - Settings are saved per account.
 
 ## Changelog
+- 0.3.1 (beta): Parts without a name of their own get a stable id instead of their memory address
+  (which changed every login, so their settings were lost). The sun/moon circle is named
+  "Day/Night Cycle", GameTimeFrame "Calendar". Name box in the Parts section to rename any part.
+  Minimap button: left-click opens the settings again, right-click edits the layout.
+- 0.3 (beta): "Set parts above the minimap" toggle. New Parts section: per-part scale (50-200%),
+  show/hide and layer (Default / Above map / Stock), Reset this part. Clicking a part's box while
+  editing opens its settings. GameTimeFrame is named "Day/night & calendar".
 - 0.2 (beta): Every part moves on its own: map, top bar, zone name, tracking, clock, calendar,
   coordinates and any extra part found in the minimap cluster. Edit layout mode (minimap button
   left-click, `/mmu edit`): drag moves the whole minimap, Shift+drag moves one part, right-click

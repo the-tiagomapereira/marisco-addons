@@ -2,7 +2,8 @@
 
 local ADDON, ns = ...
 
-local W, H = 380, 740
+local W, H = 380, 1003
+local selPart -- the part shown in the Parts section
 local f
 local ctl = {}
 local backup, saved
@@ -293,6 +294,71 @@ local function Build()
     Live()
   end)
   y = y - 34
+  ctl.above = Check(c, "Set parts above the minimap", y, function(v) db().above = v Live() end)
+  y = y - 34
+
+  ---------------- Parts
+  y = Header(c, "Parts", y)
+  ctl.part = Cycler(c, "Part", y, function(d)
+    local list = ns.PartChoices()
+    local i = 1
+    for n, p in ipairs(list) do if p.key == selPart then i = n end end
+    selPart = list[(i - 1 + d) % #list + 1].key
+    ns.RefreshConfig()
+    if ns.UpdateOverlays then ns.UpdateOverlays() end
+  end)
+  y = y - 30
+  local nl = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  nl:SetPoint("TOPLEFT", 16, y - 5)
+  nl:SetText("Name")
+  local okE, nameBox = pcall(CreateFrame, "EditBox", nil, c, "InputBoxTemplate")
+  if not okE or not nameBox then nameBox = CreateFrame("EditBox", nil, c) nameBox:SetFontObject(ChatFontNormal) end
+  nameBox:SetAutoFocus(false)
+  nameBox:SetMaxLetters(40)
+  nameBox:SetHeight(20)
+  nameBox:SetPoint("TOPLEFT", 132, y)
+  nameBox:SetPoint("TOPRIGHT", -16, y)
+  local function SaveName(self)
+    if self.cancel then self.cancel = false ns.RefreshConfig() return end
+    local text = (self:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if text == self.original then return end
+    db().partNames[selPart] = (text ~= "") and text or nil
+    Live()
+  end
+  nameBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+  nameBox:SetScript("OnEditFocusLost", function(self) ns.Safe(SaveName, self) end)
+  nameBox:SetScript("OnEscapePressed", function(self) self.cancel = true self:ClearFocus() end)
+  ctl.nameBox = nameBox
+  y = y - 28
+  ctl.partShown = Check(c, "Show this part", y, function(v)
+    ns.PartOpts(selPart, true).hidden = (not v) or nil
+    Live()
+  end)
+  y = y - 28
+  ctl.partScale = Slider(c, "Scale", y, 50, 200, 5, function(v) return v .. "%" end, function(v)
+    ns.PartOpts(selPart, true).scale = (v ~= 100) and v / 100 or nil
+    Live()
+  end)
+  y = y - 42
+  ctl.partLayer = Choice(c, "Layer", y, { { key = "default", text = "Default" }, { key = "above", text = "Above map" },
+    { key = "stock", text = "Stock" } }, function(k)
+    local o = ns.PartOpts(selPart, true)
+    if k == "above" then o.above = true elseif k == "stock" then o.above = false else o.above = nil end
+    Live()
+  end)
+  y = y - 26
+  ctl.partHint = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  ctl.partHint:SetPoint("TOPLEFT", 16, y)
+  ctl.partHint:SetPoint("TOPRIGHT", -16, y)
+  ctl.partHint:SetJustifyH("LEFT")
+  y = y - 22
+  ctl.partReset = Button(c, "Reset this part", W - 52, function()
+    db().partOpts[selPart] = nil
+    db().parts[selPart] = nil
+    Live()
+  end)
+  ctl.partReset:SetPoint("TOPLEFT", 16, y)
+  y = y - 36
 
   ---------------- Placement
   y = Header(c, "Placement", y)
@@ -360,9 +426,39 @@ function ns.RefreshConfig()
   ctl.clamp:SetChecked(d.clamp)
   ctl.snap:SetChecked(d.snap)
   ctl.move:SetText(ns.IsMoveMode() and "Done editing" or "Edit layout")
+  ctl.above:SetChecked(d.above)
+
+  -- Parts
+  local list = ns.PartChoices()
+  local label
+  for _, p in ipairs(list) do if p.key == selPart then label = p.label end end
+  if not label then selPart, label = list[1].key, list[1].label end
+  ns.selectedPart = selPart
+  ctl.part.value:SetText(label)
+  if not ctl.nameBox:HasFocus() then
+    ctl.nameBox:SetText(label)
+    ctl.nameBox.original = label
+    ctl.nameBox:SetCursorPosition(0)
+  end
+  local po = d.partOpts[selPart] or {}
+  ctl.partShown:SetChecked(not po.hidden)
+  ctl.partScale:Set(math.floor((po.scale or 1) * 100 + 0.5))
+  ctl.partLayer:Set(po.above == nil and "default" or (po.above and "above" or "stock"))
+  ctl.partHint:SetText("Default follows \"Set parts above the minimap\" (now: "
+    .. (d.above and "above" or "stock") .. "). Above: never hidden behind the map.")
 end
 
 function ns.OnMoveModeChanged() ns.RefreshConfig() end
+
+-- clicked on a part's box while editing the layout
+function ns.SelectPart(key)
+  if not f or not f:IsShown() then ns.ToggleConfig() end
+  if key ~= "map" then selPart = key end
+  ns.RefreshConfig()
+  if ns.UpdateOverlays then ns.UpdateOverlays() end
+end
+
+function ns.IsConfigShown() return f and f:IsShown() end
 
 function ns.ToggleConfig()
   if not f then Build() end

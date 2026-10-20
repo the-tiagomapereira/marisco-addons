@@ -2,7 +2,7 @@
 ## Title: Marisco's Minimap Unbound
 ## Notes: Move every part of the minimap freely (past Edit Mode's screen edge): drag the whole minimap or Shift+drag one part. Square shape and border skins.
 ## Author: Marisco
-## Version: 0.2
+## Version: 0.3.1
 ## SavedVariables: MariscosMinimapUnboundDB
 ## IconTexture: Interface\Icons\Ability_Hunter_EagleEye
 
