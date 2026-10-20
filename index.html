@@ -56,7 +56,11 @@ h1 { font: 400 clamp(40px, 7vw, 76px)/1 var(--display); color: var(--gold); marg
 .chip { font: 500 13px/1 var(--mono); padding: 8px 12px; border: 1px solid var(--edge); border-radius: 4px; background: var(--frame); color: var(--muted); }
 .chip b { color: var(--text); font-weight: 500; }
 
-.path { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--frame); border: 1px solid var(--edge); border-radius: 6px; padding: 12px 14px; max-width: 640px; }
+.suite { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; max-width: 720px; background: var(--frame); border: 1px solid var(--edge); border-radius: 6px; padding: 16px 18px; }
+.suite div { min-width: 0; flex: 1 1 280px; }
+.suite strong { display: block; color: var(--text); font-size: 18px; margin-bottom: 2px; }
+.suite p { margin: 0; color: var(--muted); font-size: 15px; }
+.path { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--frame); border: 1px solid var(--edge); border-radius: 6px; padding: 12px 14px; max-width: 720px; }
 .path code { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; color: var(--text); }
 button { font: 500 14px/1 var(--body); cursor: pointer; }
 .copy { background: transparent; color: var(--gold); border: 1px solid var(--gold-dim); border-radius: 4px; padding: 8px 12px; }
@@ -102,6 +106,9 @@ section { padding-block: 32px; }
 .d-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; align-items: flex-end; }
 .d-head h3 { font: 400 32px/1.1 var(--display); color: var(--q); margin: 0; text-wrap: balance; }
 .d-head .sub { color: var(--muted); margin: 6px 0 0; }
+.d-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.close { width: 34px; height: 34px; display: grid; place-items: center; background: var(--night); color: var(--text); border: 1px solid var(--gold-dim); border-radius: 4px; font: 400 22px/1 var(--body); padding: 0; }
+.close:hover { background: #2a2210; color: var(--gold); border-color: var(--gold); }
 .dl { display: inline-flex; align-items: center; gap: 10px; background: var(--gold); color: #1a1408; text-decoration: none; font-weight: 700; padding: 12px 18px; border-radius: 4px; }
 .dl small { font: 500 12px/1 var(--mono); opacity: .75; }
 .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
@@ -173,6 +180,13 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
         <p>Most of these addons, and the instructions on this page, are still in beta. World of Warcraft: Forever is itself in beta, so they can only be properly battle-tested once the game is released. If something breaks, tell Marisco in game.</p>
       </div>
     </div>
+    <div class="suite">
+      <div>
+        <strong>The whole suite in one zip</strong>
+        <p>All 8 addons, about 280 KB. Unzip it and drag every folder into AddOns. Don't want the beta or alpha ones? Untick them in the game's AddOns list.</p>
+      </div>
+      <a class="dl" href="https://the-tiagomapereira.github.io/marisco-addons/downloads/MariscosAddons-Suite.zip" target="_blank" rel="noopener">Download all <small>MariscosAddons-Suite.zip</small></a>
+    </div>
     <div class="path">
       <code id="pathText">_classic_beta_/Interface/AddOns</code>
       <button class="copy" id="copyPath" type="button">Copy install path</button>
@@ -192,8 +206,8 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     <div class="sec-head"><h2>Installing</h2><p>Same four steps for every addon.</p></div>
     <ol class="steps">
       <li><strong>Close WoW</strong><span class="muted">The game only reads new addons on start.</span></li>
-      <li><strong>Download the zip</strong><span>Click an addon above, then its Download button.</span></li>
-      <li><strong>Extract into AddOns</strong><span>During the beta: <code>_classic_beta_/Interface/AddOns</code>. You should see the addon's folder with its <code>.toc</code> inside.</span></li>
+      <li><strong>Download the zip</strong><span>Click an addon above, then its Download button. Or grab everything with <b>Download all</b> at the top of the page.</span></li>
+      <li><strong>Extract into AddOns</strong><span>During the beta: <code>_classic_beta_/Interface/AddOns</code>. You should see each addon's folder with its <code>.toc</code> inside.</span></li>
       <li><strong>Enable it</strong><span>Start the game and tick it in the AddOns list on the character screen.</span></li>
     </ol>
   </section>
@@ -311,7 +325,7 @@ function open(id, scroll) {
   detail.innerHTML = `<div class="detail-in">
     <div class="d-head">
       <div><h3>${esc(a.name)}</h3><p class="sub">Version ${a.ver} · ${a.status} · Forever 1.60.x</p></div>
-      <a class="dl" href="https://the-tiagomapereira.github.io/marisco-addons/downloads/${zip}" download>Download <small>${zip}</small></a>
+      <div class="d-actions"><button type="button" class="close" id="closeDetail" aria-label="Close details" title="Close">&times;</button><a class="dl" href="https://the-tiagomapereira.github.io/marisco-addons/downloads/${zip}" download>Download <small>${zip}</small></a></div>
     </div>
     <div class="shots">${a.shots.map(s => typeof s === "string" ? `<div class="shot"><span>Screenshot: ${esc(s)}</span></div>` : `<div class="shot img" tabindex="0" data-src="${s.src}" title="${esc(s.cap)}"><img src="${s.src}" alt="${esc(s.cap)}" loading="lazy"></div>`).join("")}</div>
     <div class="cols">
@@ -320,12 +334,21 @@ function open(id, scroll) {
       <div><h4>Release notes</h4><dl class="log">${a.log.map(([v,t]) => `<div><dt>${v}</dt><dd>${esc(t)}</dd></div>`).join("")}</dl></div>
       <div><h4>Commands</h4><div class="cmds">${a.cmds.map(c => `<code>${esc(c)}</code>`).join("")}</div></div>
     </div></div>`;
+  detail.hidden = false;
+  document.getElementById("closeDetail").addEventListener("click", () => closeDetail(a.id));
   try { localStorage.setItem("mads-open", a.id); } catch (e) {}
   if (scroll) detail.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
+function closeDetail(id) {
+  detail.hidden = true; detail.innerHTML = "";
+  document.querySelectorAll(".tip").forEach(t => t.setAttribute("aria-expanded", "false"));
+  try { localStorage.setItem("mads-open", "none"); } catch (e) {}
+  const tip = document.getElementById("tip-" + id);
+  if (tip) { tip.focus({ preventScroll: true }); tip.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }
+}
 let start = "cursor";
 try { start = localStorage.getItem("mads-open") || start; } catch (e) {}
-open(start, false);
+if (start === "none") detail.hidden = true; else open(start, false);
 
 const zoom = document.createElement("div"); zoom.id = "zoom"; zoom.hidden = true; zoom.innerHTML = '<img alt="">';
 document.body.appendChild(zoom);

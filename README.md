@@ -4,7 +4,7 @@ This is just a small repo of my addons to keep and share with friends.
 All addons are for **World of Warcraft: Forever 1.60.x** (interface 16001).
 
 **Showcase page:** https://the-tiagomapereira.github.io/marisco-addons/
-**Downloads:** on the showcase page, or in the [downloads](downloads) folder
+**Downloads:** on the showcase page, or in the [downloads](downloads) folder. Everything at once: [MariscosAddons-Suite.zip](downloads/MariscosAddons-Suite.zip)
 
 | Addon | Version | What it does |
 |---|---|---|
