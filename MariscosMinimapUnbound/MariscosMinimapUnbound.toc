@@ -1,0 +1,11 @@
+## Interface: 16001
+## Title: Marisco's Minimap Unbound
+## Notes: Move the minimap, its top bar and coordinates freely (past Edit Mode's screen edge), make it square, and skin its border.
+## Author: Marisco
+## Version: 0.1
+## SavedVariables: MariscosMinimapUnboundDB
+## IconTexture: Interface\Icons\Ability_Hunter_EagleEye
+
+Core.lua
+Skins.lua
+Config.lua

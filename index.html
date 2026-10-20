@@ -175,8 +175,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     <div class="meta">
       <span class="chip">Client <b>1.60.x</b></span>
       <span class="chip">Interface <b>16001</b></span>
-      <span class="chip"><b>8</b> addons</span>
-      <span class="chip"><b>2</b> coming soon</span>
+      <span class="chip"><b>10</b> addons</span>
       <span class="chip">Updated <b>Oct 20, 2026</b></span>
     </div>
     <div class="notice" role="note">
@@ -189,7 +188,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
     <div class="suite">
       <div>
         <strong>The whole suite in one zip</strong>
-        <p>All 8 addons, about 280 KB. Unzip it and drag every folder into AddOns. Don't want the beta or alpha ones? Untick them in the game's AddOns list.</p>
+        <p>All 9 player addons, about 300 KB. Unzip it and drag every folder into AddOns. Don't want the beta or alpha ones? Untick them in the game's AddOns list. Bug Catcher, the development tool, is a separate download.</p>
       </div>
       <a class="dl" href="https://the-tiagomapereira.github.io/marisco-addons/downloads/MariscosAddons-Suite.zip" target="_blank" rel="noopener">Download all <small>MariscosAddons-Suite.zip</small></a>
     </div>
@@ -284,16 +283,20 @@ const ADDONS = [
     cmds:["/mck","/mck mini","/mck summon","/mck pet","/mck play","/mck hearts","/mck probe"],
     shots:["Companion window with the 3D portrait and actions","Mini tracker during play","Fetch mini-game"],
     log:[["0.7.1","Walk together is a filling bar with the yards inside; wider mini window."],["0.7","Walk together: distance milestones that earn happiness."],["0.6","Rotating daily challenges, Pet and Play (fetch), happiness from quests and level-ups."]] },
-  { id:"minimap", soon:true, mm:null, zip:"", name:"Marisco's Minimap", ver:"", status:"Beta", q:"q-rare", slot:"Minimap",
-    cmd:"", use:"A new take on the minimap. Details coming with the first version.",
-    flavor:"\"Watch this space.\"",
-    feat:["Coming soon"], cmds:[], log:[],
-    shots:["Coming soon","Coming soon","Coming soon"] },
-  { id:"buggrabber", soon:true, mm:null, zip:"", name:"Marisco's Bug Grabber", ver:"", status:"Dev", q:"q-dev", slot:"Debugging",
-    cmd:"", use:"Catches Lua errors and debug info so addon problems are easier to track down and report.",
+  { id:"minimap", mm:{icon:"eagle-eye", left:"Open the settings", right:"Move pieces on or off"}, zip:"MariscosMinimapUnbound-0.1.zip", name:"Marisco's Minimap Unbound", ver:"0.1", status:"Beta", q:"q-rare", slot:"Minimap",
+    cmd:"/mmu", use:"Move the minimap, its top bar and coordinates anywhere, even flush with the screen edge. Square shape and border skins too.",
+    flavor:"\"No more gap at the edge.\"",
+    feat:["Move the map, top bar and coordinates separately","Snaps flush to the screen edge, arrow keys for 1 px nudges","Round or square, with 7 border skins","Map size and opacity, zoom options, own coordinates","Leaves Edit Mode alone"],
+    cmds:["/mmu","/mmu move","/mmu square","/mmu skin <name>","/mmu size <n>","/mmu reset","/mmu probe"],
+    shots:["Minimap flush against the screen edge","Move mode with the cyan boxes","Square map with a border skin"],
+    log:[["0.1","First release: unclamped map, top bar and coordinates, move mode, square shape and skins."]] },
+  { id:"buggrabber", mm:{icon:"insect swarm", left:"Open the error window", right:"Error summary per addon in chat"}, zip:"MariscosBugCatcher-0.1.zip", name:"Marisco's Bug Catcher", ver:"0.1", status:"Dev", q:"q-dev", slot:"Debugging",
+    cmd:"/mbc", use:"Catches Lua errors, blocked actions, warnings and addons that fail to load, names the addon to blame and keeps the full details ready to copy.",
     flavor:"\"Every bug, caught in the act.\"",
-    feat:["Coming soon"], cmds:[], log:[],
-    shots:["Coming soon","Coming soon","Coming soon"] }
+    feat:["Lua errors with stack trace and locals","Blocked actions (taint) explained","Addons that failed to load, and why","Last 10 sessions kept, with search and filters","Copy all: a full report ready to paste"],
+    cmds:["/mbc","/mbc test","/mbc last","/mbc clear","/mbc config","/mbc status"],
+    shots:["Error window with the session list","Details with stack and locals","Minimap button glowing with a count"],
+    log:[["0.1","First release."]] }
 ];
 
 const bag = document.getElementById("bag");
