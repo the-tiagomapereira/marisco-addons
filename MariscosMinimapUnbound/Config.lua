@@ -2,7 +2,7 @@
 
 local ADDON, ns = ...
 
-local W, H = 380, 700
+local W, H = 380, 740
 local f
 local ctl = {}
 local backup, saved
@@ -264,15 +264,27 @@ local function Build()
   ctl.wheel = Check(c, "Zoom with the mouse wheel", y, function(v) db().wheelZoom = v Live() end)
   y = y - 34
 
-  ---------------- Bar and coordinates
-  y = Header(c, "Top bar and coordinates", y)
-  ctl.barAttached = Check(c, "Top bar stays attached to the map", y, function(v) ns.SetAttached("bar", v) Live() end)
+  ---------------- Layout
+  y = Header(c, "Layout", y)
+  ctl.move = Button(c, "Edit layout", W - 52, function() ns.SetMoveMode(not ns.IsMoveMode()) end)
+  ctl.move:SetPoint("TOPLEFT", 16, y)
   y = y - 28
+  local how = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  how:SetPoint("TOPLEFT", 16, y)
+  how:SetPoint("TOPRIGHT", -16, y)
+  how:SetJustifyH("LEFT")
+  how:SetText("Highlights every part. Drag: the whole minimap. |cffffd200Shift + drag|r: only that part. "
+    .. "Right-click a part: put it back.")
+  y = y - 30
+  ctl.freeCount = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  ctl.freeCount:SetPoint("TOPLEFT", 16, y - 5)
+  local back = Button(c, "Put all back", 110, function() ns.AttachAllParts() Live() end)
+  back:SetPoint("TOPRIGHT", -16, y)
+  ctl.back = back
+  y = y - 30
   ctl.barSide = Choice(c, "Bar sits", y, { { key = "original", text = "Original" }, { key = "above", text = "Above" },
     { key = "below", text = "Below" } }, function(k) db().barSide = k Live() end)
   y = y - 30
-  ctl.coordAttached = Check(c, "Coordinates stay attached to the map", y, function(v) ns.SetAttached("coords", v) Live() end)
-  y = y - 28
   local MODES = { "auto", "own", "hidden" }
   ctl.coords = Cycler(c, "Coordinates", y, function(d)
     local i = 1
@@ -291,10 +303,8 @@ local function Build()
   y = y - 24
   ctl.snap = Check(c, "Snap to the screen edge when dropped near it", y, function(v) db().snap = v Live() end)
   y = y - 32
-  ctl.move = Button(c, "Move pieces", 150, function() ns.SetMoveMode(not ns.IsMoveMode()) end)
-  ctl.move:SetPoint("TOPLEFT", 16, y)
-  local reset = Button(c, "Reset positions", 150, function() ns.ResetPositions() Live() end)
-  reset:SetPoint("TOPRIGHT", -16, y)
+  local reset = Button(c, "Reset everything to the stock spot", W - 52, function() ns.ResetPositions() Live() end)
+  reset:SetPoint("TOPLEFT", 16, y)
 
   ---------------- Save / Default / Cancel
   local bw = math.floor((W - 20 - 16) / 3)
@@ -338,17 +348,18 @@ function ns.RefreshConfig()
   ctl.alpha:Set(math.floor((d.alpha or 1) * 100 + 0.5))
   ctl.hideZoom:SetChecked(d.hideZoom)
   ctl.wheel:SetChecked(d.wheelZoom)
-  ctl.barAttached:SetChecked(d.barAttached)
   ctl.barSide:Set(d.barSide)
-  ctl.barSide:SetActive(d.barAttached)
-  ctl.coordAttached:SetChecked(d.coordAttached)
+  local n = ns.CountFreeParts()
+  ctl.freeCount:SetText(n == 0 and "Every part moves with the minimap"
+    or (n == 1 and "1 part moved on its own" or n .. " parts moved on their own"))
+  ctl.back:SetEnabled(n > 0)
   local modeText = {
     auto = ns.HasForeverCoords() and "Forever's own" or "Auto (Forever's not found: own)",
     own = "This addon's", hidden = "Hidden" }
   ctl.coords.value:SetText(modeText[d.coordMode] or d.coordMode)
   ctl.clamp:SetChecked(d.clamp)
   ctl.snap:SetChecked(d.snap)
-  ctl.move:SetText(ns.IsMoveMode() and "Lock pieces" or "Move pieces")
+  ctl.move:SetText(ns.IsMoveMode() and "Done editing" or "Edit layout")
 end
 
 function ns.OnMoveModeChanged() ns.RefreshConfig() end

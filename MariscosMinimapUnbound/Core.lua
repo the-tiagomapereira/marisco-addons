@@ -4,8 +4,8 @@
 
 local ADDON, ns = ...
 
-ns.VERSION = "0.1"
-ns.VERSION_LABEL = "v0.1 Beta"
+ns.VERSION = "0.2"
+ns.VERSION_LABEL = "v0.2 Beta"
 ns.TITLE = "Marisco's Minimap Unbound"
 ns.ICON = "Interface\\Icons\\Ability_Hunter_EagleEye"
 
@@ -24,10 +24,9 @@ ns.DEFAULTS = {
   thickness = 2,
   size = nil,                 -- nil = the stock size
   alpha = 1,
-  barAttached = true,
-  barSide = "original",       -- original | above | below
-  coordAttached = true,
+  barSide = "original",       -- original | above | below (parts still on the bar)
   coordMode = "auto",         -- auto (Forever's own) | own | hidden
+  parts = {},                 -- parts moved on their own: key -> { point, x, y }
   clamp = false,
   snap = true,
   hideZoom = false,
@@ -190,6 +189,8 @@ local stock          -- snapshot of the stock layout, taken once per session bef
 local ready, applying, queued = false, false, false
 local holders = {}
 ns.holders = holders
+local partList = {}     -- every part with its own holder (not the map, not the coordinates)
+ns.partList = partList
 local ownCoords
 local hooked = {}
 local wheelSet = false
@@ -259,6 +260,21 @@ local function FindCoords(exclude)
     return p, "text in " .. DebugName(p)
   end
   return found, "text " .. DebugName(found)
+end
+
+local FRIENDLY = {
+  BorderTop = "Top bar", MinimapBorderTop = "Top bar",
+  ZoneTextButton = "Zone name", MinimapZoneTextButton = "Zone name",
+  Tracking = "Tracking (search)", MiniMapTracking = "Tracking (search)", MiniMapTrackingFrame = "Tracking (search)",
+  MiniMapTrackingButton = "Tracking (search)",
+  TimeManagerClockButton = "Clock", GameTimeFrame = "Calendar",
+  IndicatorFrame = "Mail and indicators", MiniMapMailFrame = "Mail",
+  InstanceDifficulty = "Instance difficulty", MiniMapInstanceDifficulty = "Instance difficulty",
+  AddonCompartmentFrame = "Addon compartment", ExpansionLandingPageMinimapButton = "Landing page button",
+}
+local function Friendly(key)
+  local last = key:gsub("#%d+$", ""):match("([^%.]+)$") or key
+  return FRIENDLY[last] or last
 end
 
 local function Snapshot()
@@ -407,7 +423,7 @@ local function ApplyInner()
   local db = ns.db
   local size = MapSize()
   local ratio = size / stock.map.w
-  local map, bar, coords = holders.map, holders.bar, holders.coords
+  local map = holders.map
 
   -- map holder
   map:SetSize(size, size)
@@ -431,77 +447,93 @@ local function ApplyInner()
     if mm[fn] then pcall(mm[fn], mm, square and 0 or 1) end
   end
 
-  -- pieces
+  -- the bar line: an invisible frame the parts still on the bar line up on
   local barRect, coordRect = stock.bar, stock.coords
-  for _, p in ipairs(stock.pieces) do
-    local o, r = p.obj, p.rect
-    if p.group == "map" then
-      local cx = (r.l + r.w / 2) - (stock.map.l + stock.map.w / 2)
-      local cy = (r.b + r.h / 2) - (stock.map.b + stock.map.h / 2)
-      local w, h = r.w, r.h
-      if p.ring then w, h = w * ratio, h * ratio end
-      Anchor(o, map, "CENTER", cx * ratio - w / 2, cy * ratio + h / 2, w, h)
-      if p.ring then o:SetAlpha(ns.ShowBlizzardRing() and (p.alpha or 1) or 0) end
-    elseif p.group == "bar" then
-      Anchor(o, bar, "TOPLEFT", r.l - barRect.l, (r.b + r.h) - (barRect.b + barRect.h), r.w, r.h)
-    elseif p.group == "coords" then
-      Anchor(o, coords, "TOPLEFT", r.l - coordRect.l, (r.b + r.h) - (coordRect.b + coordRect.h), r.w, r.h)
-      o:SetAlpha(db.coordMode == "auto" and (p.alpha or 1) or 0)
-    end
-  end
-
-  -- top bar
+  local bar, coords = holders.bar, holders.coords
   if barRect then
     bar:SetSize(barRect.w, barRect.h)
-    bar:Show()
     bar:ClearAllPoints()
     local mapTop = stock.map.b + stock.map.h
     local barAbove = (barRect.b + barRect.h / 2) >= (stock.map.b + stock.map.h / 2)
     local dx = (barRect.l + barRect.w / 2) - (stock.map.l + stock.map.w / 2)
-    if db.barAttached then
-      if db.barSide == "above" then
-        local gap = barAbove and math.max(0, barRect.b - mapTop) or 2
-        bar:SetPoint("BOTTOM", map, "TOP", 0, gap)
-      elseif db.barSide == "below" then
-        local gap = (not barAbove) and math.max(0, stock.map.b - (barRect.b + barRect.h)) or 2
-        bar:SetPoint("TOP", map, "BOTTOM", 0, -gap)
-      elseif barAbove then
-        bar:SetPoint("CENTER", map, "TOP", dx * ratio, (barRect.b + barRect.h / 2) - mapTop)
-      else
-        bar:SetPoint("CENTER", map, "BOTTOM", dx * ratio, (barRect.b + barRect.h / 2) - stock.map.b)
-      end
+    if db.barSide == "above" then
+      local gap = barAbove and math.max(0, barRect.b - mapTop) or 2
+      bar:SetPoint("BOTTOM", map, "TOP", 0, gap)
+    elseif db.barSide == "below" then
+      local gap = (not barAbove) and math.max(0, stock.map.b - (barRect.b + barRect.h)) or 2
+      bar:SetPoint("TOP", map, "BOTTOM", 0, -gap)
+    elseif barAbove then
+      bar:SetPoint("CENTER", map, "TOP", dx * ratio, (barRect.b + barRect.h / 2) - mapTop)
     else
-      Place(bar, db.pos.bar or PosFromRect(barRect))
+      bar:SetPoint("CENTER", map, "BOTTOM", dx * ratio, (barRect.b + barRect.h / 2) - stock.map.b)
     end
-  else
-    bar:Hide()
   end
 
-  -- coordinates
+  -- the round border follows the map and grows with it
+  for _, p in ipairs(stock.pieces) do
+    if p.ring then
+      local r = p.rect
+      local cx = (r.l + r.w / 2) - (stock.map.l + stock.map.w / 2)
+      local cy = (r.b + r.h / 2) - (stock.map.b + stock.map.h / 2)
+      local w, h = r.w * ratio, r.h * ratio
+      Anchor(p.obj, map, "CENTER", cx * ratio - w / 2, cy * ratio + h / 2, w, h)
+      p.obj:SetAlpha(ns.ShowBlizzardRing() and (p.alpha or 1) or 0)
+    end
+  end
+
+  -- every other part sits in its own holder: on its stock spot, or wherever it was moved
+  for _, part in ipairs(partList) do
+    local h, r = part.holder, part.rect
+    h:SetSize(r.w, r.h)
+    h:ClearAllPoints()
+    local free = db.parts[part.key]
+    if free then
+      Place(h, free)
+    elseif part.group == "bar" and barRect then
+      h:SetPoint("TOPLEFT", bar, "TOPLEFT", r.l - barRect.l, (r.b + r.h) - (barRect.b + barRect.h))
+    else
+      local cx = (r.l + r.w / 2) - (stock.map.l + stock.map.w / 2)
+      local cy = (r.b + r.h / 2) - (stock.map.b + stock.map.h / 2)
+      h:SetPoint("CENTER", map, "CENTER", cx * ratio, cy * ratio)
+    end
+    Anchor(part.piece.obj, h, "TOPLEFT", 0, 0, r.w, r.h)
+  end
+
+  -- coordinates: Forever's, this addon's, or hidden; one part either way
   local useOwn = db.coordMode == "own" or (db.coordMode == "auto" and not coordRect)
   local cw, ch
   if coordRect and not useOwn then cw, ch = coordRect.w, coordRect.h else cw, ch = 72, 14 end
   coords:SetSize(cw, ch)
-  local coordFree = db.pos.coords or PosFromRect(coordRect or {
-    l = stock.map.l + (stock.map.w - cw) / 2, b = stock.map.b - ch - 4, w = cw, h = ch })
   coords:ClearAllPoints()
-  if db.coordAttached then
-    if coordRect then
-      local cx = (coordRect.l + coordRect.w / 2) - (stock.map.l + stock.map.w / 2)
-      local cy = (coordRect.b + coordRect.h / 2) - (stock.map.b + stock.map.h / 2)
-      coords:SetPoint("CENTER", map, "CENTER", cx * ratio, cy * ratio)
-    else
-      coords:SetPoint("BOTTOM", map, "BOTTOM", 0, 6)
-    end
+  if db.parts.coords then
+    Place(coords, db.parts.coords)
+  elseif coordRect then
+    local cx = (coordRect.l + coordRect.w / 2) - (stock.map.l + stock.map.w / 2)
+    local cy = (coordRect.b + coordRect.h / 2) - (stock.map.b + stock.map.h / 2)
+    coords:SetPoint("CENTER", map, "CENTER", cx * ratio, cy * ratio)
   else
-    Place(coords, coordFree)
+    coords:SetPoint("BOTTOM", map, "BOTTOM", 0, 6)
+  end
+  for _, p in ipairs(stock.pieces) do
+    if p.group == "coords" then
+      local r = p.rect
+      if useOwn then
+        Anchor(p.obj, coords, "CENTER", -r.w / 2, r.h / 2, r.w, r.h)
+      else
+        Anchor(p.obj, coords, "TOPLEFT", r.l - coordRect.l, (r.b + r.h) - (coordRect.b + coordRect.h), r.w, r.h)
+      end
+      p.obj:SetAlpha(useOwn and 0 or (p.alpha or 1))
+    end
   end
   coords:SetShown(db.coordMode ~= "hidden")
   ownCoords:SetShown(useOwn and db.coordMode ~= "hidden")
   UpdateOwnCoords()
 
   -- screen clamp: off by default, which is the whole point
-  for _, h in pairs(holders) do h:SetClampedToScreen(db.clamp and true or false) end
+  local clamp = db.clamp and true or false
+  map:SetClampedToScreen(clamp)
+  coords:SetClampedToScreen(clamp)
+  for _, part in ipairs(partList) do part.holder:SetClampedToScreen(clamp) end
 
   -- zoom buttons
   for b in pairs(ZoomButtons()) do
@@ -572,130 +604,246 @@ function ns.Restore()
 end
 
 ---------------------------------------------------------------------------
--- Moving the pieces
+-- Editing the layout
+-- Every part gets a highlight box. Drag: the whole minimap. Shift+drag: only that part.
+-- Right-click a box: put that part back on its stock spot.
 ---------------------------------------------------------------------------
 local moveMode = false
 local overlays = {}
+local editBar
 
-local function DragTarget(key)
+local function AllParts()
+  local list = {
+    { key = "map", holder = holders.map, label = "Minimap" },
+    { key = "coords", holder = holders.coords, label = "Coordinates" },
+  }
+  for _, part in ipairs(partList) do list[#list + 1] = part end
+  return list
+end
+
+local function IsFree(key)
+  if key == "map" then return ns.db.pos.map ~= nil end
+  return ns.db.parts[key] ~= nil
+end
+
+-- Which holder a drag or nudge moves, and the key its position is saved under.
+-- A part is turned into a free part on the spot, so it starts from where it is now.
+local function Target(part, single)
+  if part.key == "map" or not single then return holders.map, "map" end
   local db = ns.db
-  if key == "bar" and db.barAttached then return holders.map, "map" end
-  if key == "coords" and db.coordAttached then return holders.map, "map" end
-  return holders[key], key
+  if not db.parts[part.key] then
+    local r = UIRect(part.holder)
+    if not r then return holders.map, "map" end
+    db.parts[part.key] = PosFromRect(r, false)
+    Place(part.holder, db.parts[part.key])
+  end
+  return part.holder, part.key
 end
 
-local function SaveHolder(key, snap)
-  local h = holders[key]
-  local r = UIRect(h)
+local function SavePos(key, frame, snap)
+  local r = UIRect(frame)
   if not r then return end
-  ns.db.pos[key] = PosFromRect(r, snap)
+  if key == "map" then ns.db.pos.map = PosFromRect(r, snap) else ns.db.parts[key] = PosFromRect(r, snap) end
 end
 
-local function Nudge(key, dx, dy)
-  local h, k = DragTarget(key)
+local function Nudge(part, single, dx, dy)
+  local h, key = Target(part, single)
   local r = UIRect(h)
   if not r then return end
   r.l, r.b = r.l + dx, r.b + dy
-  ns.db.pos[k] = PosFromRect(r, false)
+  if key == "map" then ns.db.pos.map = PosFromRect(r, false) else ns.db.parts[key] = PosFromRect(r, false) end
   ns.Apply()
 end
 
-local LABELS = { map = "Minimap", bar = "Top bar", coords = "Coordinates" }
+local function PutBack(part)
+  if part.key == "map" then ns.db.pos.map = nil else ns.db.parts[part.key] = nil end
+  ns.Apply()
+end
 
-local function MakeOverlay(key)
-  local o = CreateFrame("Frame", nil, holders[key])
-  o:SetAllPoints(holders[key])
+local function ShowPartTooltip(o)
+  local part = o.part
+  GameTooltip:SetOwner(o, "ANCHOR_TOP")
+  GameTooltip:AddLine(part.label)
+  if part.key == "map" then
+    GameTooltip:AddLine(IsFree("map") and "Moved" or "On its stock spot", 0.7, 0.7, 0.7)
+  else
+    GameTooltip:AddLine(IsFree(part.key) and "Moved on its own" or "Moves with the minimap", 0.7, 0.7, 0.7)
+    if part.piece and not part.piece.obj:IsShown() then
+      GameTooltip:AddLine("Hidden right now (shows when the game needs it)", 0.7, 0.7, 0.7, true)
+    end
+  end
+  GameTooltip:AddLine(" ")
+  GameTooltip:AddLine("Drag: move the whole minimap", 1, 1, 1)
+  if part.key ~= "map" then GameTooltip:AddLine("Shift + drag: move only this part", 1, 1, 1) end
+  GameTooltip:AddLine("Arrow keys: 1 px (Ctrl: 10 px, Shift: only this part)", 1, 1, 1, true)
+  GameTooltip:AddLine(part.key == "map" and "Right-click: back to the stock spot" or "Right-click: put it back", 1, 1, 1)
+  GameTooltip:Show()
+end
+
+local function MakeOverlay(part)
+  local o = CreateFrame("Frame", nil, part.holder)
+  o:SetAllPoints(part.holder)
   o:SetFrameStrata("DIALOG")
   o:EnableMouse(true)
   o:RegisterForDrag("LeftButton")
+  o.part = part
   local bg = o:CreateTexture(nil, "BACKGROUND")
   bg:SetAllPoints()
-  bg:SetColorTexture(0, 0.8, 1, 0.30)
   o.bg = bg
+  o.edges = {}
   for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
     local t = o:CreateTexture(nil, "BORDER")
-    t:SetColorTexture(0, 0.9, 1, 0.9)
     if side == "TOP" or side == "BOTTOM" then
       t:SetHeight(1) t:SetPoint(side .. "LEFT") t:SetPoint(side .. "RIGHT")
     else
       t:SetWidth(1) t:SetPoint("TOP" .. side) t:SetPoint("BOTTOM" .. side)
     end
+    o.edges[#o.edges + 1] = t
   end
   local fs = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   fs:SetPoint("CENTER")
-  fs:SetText(LABELS[key])
+  fs:SetText(part.label)
   o.text = fs
-  o:SetScript("OnDragStart", function()
+
+  o:SetScript("OnDragStart", function(self)
     if InCombatLockdown() then return end
-    local h = DragTarget(key)
+    local h, key = Target(part, IsShiftKeyDown())
     h:StartMoving()
-    o.dragging = h
+    self.drag = { h = h, key = key }
+    GameTooltip:Hide()
   end)
-  o:SetScript("OnDragStop", function()
-    local h = o.dragging
-    if not h then return end
-    o.dragging = nil
-    h:StopMovingOrSizing()
-    local _, k = DragTarget(key)
-    SaveHolder(k, ns.db.snap)
+  o:SetScript("OnDragStop", function(self)
+    local d = self.drag
+    if not d then return end
+    self.drag = nil
+    d.h:StopMovingOrSizing()
+    SavePos(d.key, d.h, ns.db.snap)
     ns.Apply()
+  end)
+  o:SetScript("OnMouseUp", function(self, btn)
+    if btn == "RightButton" then
+      PutBack(part)
+      if self:IsMouseOver() then ShowPartTooltip(self) end
+    end
   end)
   o:SetScript("OnEnter", function(self)
     if not InCombatLockdown() then self:EnableKeyboard(true) end
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:AddLine(LABELS[key])
-    local _, k = DragTarget(key)
-    if k ~= key then GameTooltip:AddLine("Attached: dragging it moves the whole minimap.", 0.7, 0.7, 0.7, true) end
-    GameTooltip:AddLine("Drag to move. Arrow keys: 1 px, Shift + arrows: 10 px.", 1, 1, 1, true)
-    GameTooltip:Show()
+    self.hover = true
+    ns.UpdateOverlays()
+    ShowPartTooltip(self)
   end)
   o:SetScript("OnLeave", function(self)
     if not InCombatLockdown() then self:EnableKeyboard(false) end
+    self.hover = false
+    ns.UpdateOverlays()
     GameTooltip:Hide()
   end)
   o:SetScript("OnKeyDown", function(self, k)
-    local step = IsShiftKeyDown() and 10 or 1
+    local step = IsControlKeyDown() and 10 or 1
     local d = ({ UP = { 0, step }, DOWN = { 0, -step }, LEFT = { -step, 0 }, RIGHT = { step, 0 } })[k]
     if not InCombatLockdown() then self:SetPropagateKeyboardInput(not d) end
-    if d then Nudge(key, d[1], d[2]) end
+    if d then ns.Safe(Nudge, part, IsShiftKeyDown(), d[1], d[2]) end
   end)
   o:Hide()
-  overlays[key] = o
+  overlays[part.key] = o
   return o
 end
 
+-- cyan: moves with the minimap; gold: moved on its own; brighter while hovered
 function ns.UpdateOverlays()
-  for key, o in pairs(overlays) do
-    local show = moveMode and holders[key]:IsShown()
+  local list = AllParts()
+  -- smaller parts sit on top, so a button on the bar can be grabbed instead of the bar
+  table.sort(list, function(a, b)
+    local ra, rb = UIRect(a.holder), UIRect(b.holder)
+    return (ra and ra.w * ra.h or 0) > (rb and rb.w * rb.h or 0)
+  end)
+  for rank, part in ipairs(list) do
+    local o = overlays[part.key] or MakeOverlay(part)
+    local show = moveMode and part.holder:IsShown()
     o:SetShown(show and true or false)
     if show then
-      local _, k = DragTarget(key)
-      o.bg:SetColorTexture(0, 0.8, 1, k == key and 0.30 or 0.15)
-      o.text:SetText(LABELS[key] .. (k ~= key and " (attached)" or ""))
+      o:SetFrameLevel(20 + rank * 3)
+      local free = IsFree(part.key) and part.key ~= "map"
+      local r, g, b = 0, 0.8, 1
+      if free then r, g, b = 1, 0.75, 0.1 end
+      o.bg:SetColorTexture(r, g, b, o.hover and 0.45 or 0.22)
+      for _, t in ipairs(o.edges) do t:SetColorTexture(r, g, b, 0.95) end
+      local rect = UIRect(part.holder)
+      o.text:SetShown(rect and rect.w >= 50 and rect.h >= 12 or false)
     end
   end
 end
 
+local function MakeEditBar()
+  local ok, b = pcall(CreateFrame, "Frame", "MariscosMinimapUnboundEditBar", UIParent, "BackdropTemplate")
+  if not ok or not b then b = CreateFrame("Frame", "MariscosMinimapUnboundEditBar", UIParent) end
+  b:SetSize(560, 64)
+  b:SetPoint("TOP", UIParent, "TOP", 0, -110)
+  b:SetFrameStrata("FULLSCREEN_DIALOG")
+  b:SetClampedToScreen(true)
+  b:EnableMouse(true)
+  b:SetMovable(true)
+  b:RegisterForDrag("LeftButton")
+  b:SetScript("OnDragStart", b.StartMoving)
+  b:SetScript("OnDragStop", b.StopMovingOrSizing)
+  if b.SetBackdrop then
+    b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                    edgeSize = 14, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+    b:SetBackdropColor(0, 0, 0, 0.85)
+    b:SetBackdropBorderColor(0, 0.8, 1, 1)
+  end
+  local t = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  t:SetPoint("TOPLEFT", 14, -10)
+  t:SetText("Minimap Unbound: editing the layout")
+  local h = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  h:SetPoint("TOPLEFT", 14, -30)
+  h:SetPoint("RIGHT", -170, 0)
+  h:SetJustifyH("LEFT")
+  h:SetText("Drag: whole minimap   |cffffd200Shift + drag|r: one part\nRight-click: put a part back   Arrows: 1 px (Ctrl 10)")
+  local function Btn(text, w, onClick)
+    local x = CreateFrame("Button", nil, b, "UIPanelButtonTemplate")
+    x:SetSize(w, 22)
+    x:SetText(text)
+    x:SetScript("OnClick", function() ns.Safe(onClick) end)
+    return x
+  end
+  local done = Btn("Done", 70, function() ns.SetMoveMode(false) end)
+  done:SetPoint("RIGHT", -12, 0)
+  local back = Btn("Put all back", 90, function() ns.AttachAllParts() end)
+  back:SetPoint("RIGHT", done, "LEFT", -4, 0)
+  b:Hide()
+  return b
+end
+
 function ns.SetMoveMode(on)
-  if on and InCombatLockdown() then Print("can't move pieces in combat.") return end
+  if on and InCombatLockdown() then Print("can't edit the layout in combat.") return end
+  if not ready then return end
   moveMode = on and true or false
-  if not overlays.map then for key in pairs(LABELS) do MakeOverlay(key) end end
+  editBar = editBar or MakeEditBar()
+  editBar:SetShown(moveMode)
   ns.UpdateOverlays()
   if ns.OnMoveModeChanged then ns.OnMoveModeChanged(moveMode) end
 end
 function ns.IsMoveMode() return moveMode end
 
+-- every part back on the map (the map itself stays where it is)
+function ns.AttachAllParts()
+  ns.db.parts = {}
+  ns.Apply()
+  if ns.RefreshConfig then ns.RefreshConfig() end
+end
+
+-- everything back to the stock spot
 function ns.ResetPositions()
   ns.db.pos = {}
+  ns.db.parts = {}
   ns.Apply()
 end
 
--- Detaching keeps the piece where it is right now.
-function ns.SetAttached(which, on)
-  local key = which == "bar" and "barAttached" or "coordAttached"
-  if not on then SaveHolder(which, false) end
-  ns.db[key] = on and true or false
-  ns.Apply()
+function ns.CountFreeParts()
+  local n = 0
+  for _ in pairs(ns.db.parts) do n = n + 1 end
+  return n
 end
 
 ---------------------------------------------------------------------------
@@ -742,8 +890,8 @@ local function CreateButton()
   icon:SetPoint("TOPLEFT", 7, -6)
 
   button:SetScript("OnClick", function(_, b)
-    if b == "RightButton" then ns.SetMoveMode(not moveMode)
-    else ns.ToggleConfig() end
+    if b == "RightButton" then ns.ToggleConfig()
+    else ns.SetMoveMode(not moveMode) end
   end)
   button:SetScript("OnDragStart", function(self)
     self:SetScript("OnUpdate", function()
@@ -758,8 +906,8 @@ local function CreateButton()
   button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine(ns.TITLE)
-    GameTooltip:AddLine("Left-click: settings", 1, 1, 1)
-    GameTooltip:AddLine("Right-click: move pieces " .. (moveMode and "(on)" or "(off)"), 1, 1, 1)
+    GameTooltip:AddLine("Left-click: edit the layout " .. (moveMode and "(on)" or "(off)"), 1, 1, 1)
+    GameTooltip:AddLine("Right-click: settings", 1, 1, 1)
     GameTooltip:AddLine("Drag: move this button", 1, 1, 1)
     GameTooltip:Show()
   end)
@@ -813,6 +961,12 @@ function ns.BuildReport()
       add(string.format("  [%s%s] %s [%s] stock %s  now %s", p.group, p.ring and ", ring" or "",
         DebugName(p.obj), p.obj:GetObjectType(), RectText(p.rect), RectText(UIRect(p.obj))))
     end
+    add("")
+    add("== Parts (each movable on its own) ==")
+    for _, part in ipairs(partList) do
+      add(string.format("  %s = %s, %s", part.label, part.key, ns.db.parts[part.key] and "moved" or "on its stock spot"))
+    end
+    add("  Coordinates = coords, " .. (ns.db.parts.coords and "moved" or "on its stock spot"))
     add("bar rect " .. RectText(stock.bar))
     add("coordinates: " .. (stock.coordHow or "not found (own coordinates used in Auto)"))
     if #stock.others > 0 then add("left alone: " .. table.concat(stock.others, ", ")) end
@@ -829,10 +983,11 @@ function ns.BuildReport()
   local db = ns.db
   add(string.format("shape %s, skin %s, thickness %d, size %d (stock %d), alpha %.2f", db.shape, db.skin, db.thickness,
       MapSize(), ns.StockSize(), db.alpha))
-  add(string.format("bar attached %s (%s), coords attached %s (%s), clamp %s, snap %s, hide zoom %s, wheel %s",
-      tostring(db.barAttached), db.barSide, tostring(db.coordAttached), db.coordMode, tostring(db.clamp),
+  add(string.format("bar side %s, coordinates %s, clamp %s, snap %s, hide zoom %s, wheel %s",
+      db.barSide, db.coordMode, tostring(db.clamp),
       tostring(db.snap), tostring(db.hideZoom), tostring(db.wheelZoom)))
   for k, p in pairs(db.pos) do add(string.format("  pos %s: %s %.1f %.1f", k, p.point, p.x, p.y)) end
+  for k, p in pairs(db.parts) do add(string.format("  part %s: %s %.1f %.1f", k, p.point, p.x, p.y)) end
   add("")
   add("== Errors (latest first) ==")
   if #ns.errors == 0 then add("none") end
@@ -865,6 +1020,21 @@ local function Init()
   end)
   if ns.CreateSkinLayers then ns.CreateSkinLayers(holders.map) end
 
+  -- one holder per part (everything but the map, its round border and the coordinates)
+  local used = {}
+  for _, p in ipairs(stock.pieces) do
+    if not p.ring and p.group ~= "coords" then
+      local key = DebugName(p.obj)
+      if used[key] then key = key .. "#" .. (#partList + 1) end
+      used[key] = true
+      local h = CreateFrame("Frame", nil, UIParent)
+      h:SetMovable(true)
+      h:SetClampedToScreen(false)
+      h:SetSize(p.rect.w, p.rect.h)
+      partList[#partList + 1] = { key = key, holder = h, label = Friendly(key), group = p.group, piece = p, rect = p.rect }
+    end
+  end
+
   Hook(Minimap)
   for _, p in ipairs(stock.pieces) do Hook(p.obj) end
   if MinimapCluster then
@@ -895,6 +1065,10 @@ ev:SetScript("OnEvent", function(_, event, arg1)
       MariscosMinimapUnboundDB = MariscosMinimapUnboundDB or {}
       ns.db = MariscosMinimapUnboundDB
       FillDefaults(ns.db, ns.DEFAULTS)
+      -- v0.1 -> v0.2: the bar/coordinates holders became parts
+      local db = ns.db
+      if db.coordAttached == false and db.pos.coords then db.parts.coords = db.pos.coords end
+      db.pos.bar, db.pos.coords, db.barAttached, db.coordAttached = nil, nil, nil, nil
       if not GetMinimapShape then
         ns.shapeOwner = true
         function GetMinimapShape()
@@ -917,12 +1091,12 @@ end)
 ---------------------------------------------------------------------------
 local HELP = {
   "/mmu - settings",
-  "/mmu move - show the cyan boxes to drag the pieces (again to lock)",
+  "/mmu edit - edit the layout: drag = whole minimap, Shift+drag = one part (again to finish)",
   "/mmu square | round - shape",
   "/mmu skin <stock|clean|line|framed|shadow|tooltip|dialog>",
   "/mmu size <80-400> - map size (/mmu size stock for the original)",
   "/mmu clamp - keep on screen on/off   /mmu snap - edge snapping on/off",
-  "/mmu attach bar|coords - attach or detach",
+  "/mmu back - every part back on the map",
   "/mmu coords auto|own|hidden",
   "/mmu zoom - hide/show zoom buttons   /mmu wheel - mouse-wheel zoom on/off",
   "/mmu reset - positions back to the stock spot   /mmu default - every setting back",
@@ -946,8 +1120,8 @@ SlashCmdList.MARISCOSMINIMAPUNBOUND = function(msg)
     if cmd == "help" then for _, l in ipairs(HELP) do Print(l) end return end
     if cmd == "probe" or cmd == "debug" then ns.ShowReport(ns.BuildReport()) return end
     if not ready then Print("still starting up, try again in a moment.") return end
-    if cmd == "move" or cmd == "unlock" then ns.SetMoveMode(not moveMode)
-      Print("move pieces " .. OnOff(moveMode))
+    if cmd == "edit" or cmd == "move" or cmd == "unlock" then ns.SetMoveMode(not moveMode)
+      Print("editing the layout " .. OnOff(moveMode))
     elseif cmd == "lock" then ns.SetMoveMode(false)
     elseif cmd == "square" or cmd == "round" then db.shape = cmd ns.ApplyAll()
     elseif cmd == "skin" then
@@ -960,10 +1134,7 @@ SlashCmdList.MARISCOSMINIMAPUNBOUND = function(msg)
       ns.ApplyAll()
     elseif cmd == "clamp" then db.clamp = not db.clamp ns.Apply() Print("keep on screen " .. OnOff(db.clamp))
     elseif cmd == "snap" then db.snap = not db.snap Print("snap to screen edges " .. OnOff(db.snap))
-    elseif cmd == "attach" then
-      if rest == "bar" then ns.SetAttached("bar", not db.barAttached) Print("bar attached " .. OnOff(db.barAttached))
-      elseif rest == "coords" then ns.SetAttached("coords", not db.coordAttached) Print("coordinates attached " .. OnOff(db.coordAttached))
-      else Print("/mmu attach bar|coords") end
+    elseif cmd == "back" then ns.AttachAllParts() Print("every part is back on the map.")
     elseif cmd == "coords" then
       if rest == "auto" or rest == "own" or rest == "hidden" then db.coordMode = rest ns.Apply() else Print("/mmu coords auto|own|hidden") end
     elseif cmd == "zoom" then db.hideZoom = not db.hideZoom ns.Apply() Print("zoom buttons hidden " .. OnOff(db.hideZoom))
@@ -976,9 +1147,8 @@ SlashCmdList.MARISCOSMINIMAPUNBOUND = function(msg)
       Print("the minimap is back with Blizzard. A /reload makes sure everything is exactly stock.")
     elseif cmd == "on" then db.enabled = true ns.ApplyAll() Print("on.")
     elseif cmd == "status" then
-      Print(string.format("%s | %s, skin %s, size %d | bar %s, coords %s (%s) | keep on screen %s | snap %s",
-        OnOff(db.enabled), db.shape, db.skin, MapSize(), db.barAttached and "attached" or "free",
-        db.coordAttached and "attached" or "free", db.coordMode, OnOff(db.clamp), OnOff(db.snap)))
+      Print(string.format("%s | %s, skin %s, size %d | %d part(s) moved on their own | coordinates %s | keep on screen %s | snap %s",
+        OnOff(db.enabled), db.shape, db.skin, MapSize(), ns.CountFreeParts(), db.coordMode, OnOff(db.clamp), OnOff(db.snap)))
     else
       for _, l in ipairs(HELP) do Print(l) end
     end
@@ -987,7 +1157,7 @@ end
 
 function ns.LoadDefaults()
   local db = ns.db
-  local keep = { pos = db.pos, button = db.button, configPos = db.configPos, enabled = db.enabled }
+  local keep = { pos = db.pos, parts = db.parts, button = db.button, configPos = db.configPos, enabled = db.enabled }
   for k in pairs(db) do db[k] = nil end
   FillDefaults(db, ns.DEFAULTS)
   for k, v in pairs(keep) do db[k] = v end

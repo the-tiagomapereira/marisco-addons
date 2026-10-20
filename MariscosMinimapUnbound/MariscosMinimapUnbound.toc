@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Marisco's Minimap Unbound
-## Notes: Move the minimap, its top bar and coordinates freely (past Edit Mode's screen edge), make it square, and skin its border.
+## Notes: Move every part of the minimap freely (past Edit Mode's screen edge): drag the whole minimap or Shift+drag one part. Square shape and border skins.
 ## Author: Marisco
-## Version: 0.1
+## Version: 0.2
 ## SavedVariables: MariscosMinimapUnboundDB
 ## IconTexture: Interface\Icons\Ability_Hunter_EagleEye
 
