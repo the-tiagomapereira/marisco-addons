@@ -70,6 +70,13 @@ section { padding-block: 32px; }
 .sec-head.stack p { font-size: 16px; }
 
 /* bag of tooltips */
+.tiers { display: grid; gap: 44px; }
+.tier { display: grid; gap: 16px; }
+.tier-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding-bottom: 10px; border-bottom: 1px solid var(--q); }
+.tier-head h3 { margin: 0; font: 400 24px/1.1 var(--display); color: var(--q); }
+.tier-head .count { font: 500 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--q); border: 1px solid var(--q); border-radius: 3px; padding: 4px 7px; opacity: .85; }
+.tier-head p { margin: 0; color: var(--muted); font-size: 15px; flex: 1 1 260px; }
+.tier .detail { margin-top: 10px; }
 .bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 18px; }
 .tip {
   text-align: left; color: var(--text); font: inherit;
@@ -157,7 +164,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
       <span class="chip">Client <b>1.60.x</b></span>
       <span class="chip">Interface <b>16001</b></span>
       <span class="chip"><b>8</b> addons</span>
-      <span class="chip">Updated <b>Oct 16, 2026</b></span>
+      <span class="chip">Updated <b>Oct 20, 2026</b></span>
     </div>
     <div class="notice" role="note">
       <span class="ic" aria-hidden="true">!</span>
@@ -175,9 +182,9 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
   <section id="addons">
     <div class="sec-head stack">
       <h2>My current addons</h2>
-      <p>Item color shows status: <span style="color:var(--q-legend)">orange</span> is a release, <span style="color:var(--q-rare)">blue</span> is beta, <span style="color:var(--q-poor)">gray</span> is alpha. Click one for details.</p>
+      <p>Grouped by how finished they are. The item color matches: <span style="color:var(--q-legend)">orange</span> releases, <span style="color:var(--q-rare)">blue</span> beta, <span style="color:var(--q-poor)">gray</span> alpha. Click one for details.</p>
     </div>
-    <div class="bag" id="bag"></div>
+    <div class="tiers" id="bag"></div>
     <div id="detail"></div>
   </section>
 
@@ -263,6 +270,21 @@ const bag = document.getElementById("bag");
 const detail = document.getElementById("detail");
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
+const TIERS = [
+  { status: "Release", title: "Releases", q: "q-legend", note: "Finished and in daily use. Safe to install." },
+  { status: "Beta", title: "Beta", q: "q-rare", note: "Working and in use, still being tuned. Expect the odd bug." },
+  { status: "Alpha", title: "Alpha", q: "q-poor", note: "Early experiments. Try them, but expect things to break." }
+];
+const grids = {};
+TIERS.forEach(t => {
+  const list = ADDONS.filter(a => a.status === t.status);
+  if (!list.length) return;
+  const sec = document.createElement("div");
+  sec.className = "tier " + t.q; sec.id = "tier-" + t.status.toLowerCase();
+  sec.innerHTML = `<div class="tier-head"><h3>${t.title}</h3><span class="count">${list.length} addon${list.length > 1 ? "s" : ""}</span><p>${t.note}</p></div><div class="bag"></div>`;
+  bag.appendChild(sec);
+  grids[t.status] = sec;
+});
 ADDONS.forEach(a => {
   const b = document.createElement("button");
   b.type = "button"; b.className = "tip " + a.q; b.id = "tip-" + a.id;
@@ -276,13 +298,15 @@ ADDONS.forEach(a => {
     <span class="flavor">${esc(a.flavor)}</span>
     <span class="more">Details ▾</span>`;
   b.addEventListener("click", () => open(a.id, true));
-  bag.appendChild(b);
+  (grids[a.status] || grids.Beta).querySelector(".bag").appendChild(b);
 });
 
 function open(id, scroll) {
   const a = ADDONS.find(x => x.id === id) || ADDONS[0];
   document.querySelectorAll(".tip").forEach(t => t.setAttribute("aria-expanded", t.id === "tip-" + a.id));
   const zip = a.zip;
+  const home = grids[a.status] || grids.Beta;
+  if (detail.parentNode !== home) home.appendChild(detail);
   detail.className = "detail " + a.q;
   detail.innerHTML = `<div class="detail-in">
     <div class="d-head">
