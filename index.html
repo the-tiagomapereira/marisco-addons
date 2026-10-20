@@ -24,6 +24,7 @@
   --q-legend: #ff8a1f;
   --q-common: #f2f2f2;
   --q-poor: #9d9d9d;
+  --q-dev: #4fd1c5;
   --display: "Marcellus SC", "Trajan Pro", Georgia, serif;
   --body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -98,7 +99,11 @@ section { padding-block: 32px; }
 .tip .use { color: var(--use); font-size: 15px; margin-top: 6px; }
 .tip .flavor { color: var(--gold); font-style: italic; font-size: 15px; margin-top: 4px; }
 .tip .more { margin-top: 10px; font: 500 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.q-legend { --q: var(--q-legend); } .q-epic { --q: var(--q-epic); } .q-rare { --q: var(--q-rare); } .q-poor { --q: var(--q-poor); }
+.q-legend { --q: var(--q-legend); } .q-epic { --q: var(--q-epic); } .q-rare { --q: var(--q-rare); } .q-poor { --q: var(--q-poor); } .q-dev { --q: var(--q-dev); }
+.tip.soon { border-style: dashed; }
+.tip.soon .white:nth-of-type(3) span:last-child { color: var(--muted); font-style: italic; }
+.dl.off { background: transparent; color: var(--muted); border: 1px dashed var(--edge); cursor: default; }
+.tier.q-dev { border: 1px solid var(--edge); border-radius: 8px; padding: 22px clamp(14px, 3vw, 24px); background: linear-gradient(#0f1a1c, var(--night)); }
 
 /* detail */
 .detail { margin-top: 26px; background: var(--frame); border: 1px solid var(--edge); border-top: 3px solid var(--q); border-radius: 6px; padding-block: 26px; }
@@ -171,6 +176,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: 
       <span class="chip">Client <b>1.60.x</b></span>
       <span class="chip">Interface <b>16001</b></span>
       <span class="chip"><b>8</b> addons</span>
+      <span class="chip"><b>2</b> coming soon</span>
       <span class="chip">Updated <b>Oct 20, 2026</b></span>
     </div>
     <div class="notice" role="note">
@@ -278,6 +284,16 @@ const ADDONS = [
     cmds:["/mck","/mck mini","/mck summon","/mck pet","/mck play","/mck hearts","/mck probe"],
     shots:["Companion window with the 3D portrait and actions","Mini tracker during play","Fetch mini-game"],
     log:[["0.7.1","Walk together is a filling bar with the yards inside; wider mini window."],["0.7","Walk together: distance milestones that earn happiness."],["0.6","Rotating daily challenges, Pet and Play (fetch), happiness from quests and level-ups."]] },
+  { id:"minimap", soon:true, mm:null, zip:"", name:"Marisco's Minimap", ver:"", status:"Beta", q:"q-rare", slot:"Minimap",
+    cmd:"", use:"A new take on the minimap. Details coming with the first version.",
+    flavor:"\"Watch this space.\"",
+    feat:["Coming soon"], cmds:[], log:[],
+    shots:["Coming soon","Coming soon","Coming soon"] },
+  { id:"buggrabber", soon:true, mm:null, zip:"", name:"Marisco's Bug Grabber", ver:"", status:"Dev", q:"q-dev", slot:"Debugging",
+    cmd:"", use:"Catches Lua errors and debug info so addon problems are easier to track down and report.",
+    flavor:"\"Every bug, caught in the act.\"",
+    feat:["Coming soon"], cmds:[], log:[],
+    shots:["Coming soon","Coming soon","Coming soon"] }
 ];
 
 const bag = document.getElementById("bag");
@@ -287,7 +303,8 @@ const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'
 const TIERS = [
   { status: "Release", title: "Releases", q: "q-legend", note: "Finished and in daily use. Safe to install." },
   { status: "Beta", title: "Beta", q: "q-rare", note: "Working and in use, still being tuned. Expect the odd bug." },
-  { status: "Alpha", title: "Alpha", q: "q-poor", note: "Early experiments. Try them, but expect things to break." }
+  { status: "Alpha", title: "Alpha", q: "q-poor", note: "Early experiments. Try them, but expect things to break." },
+  { status: "Dev", title: "For Development", q: "q-dev", note: "Tools for debugging and building addons. You don't need these to play, and they're left out of Download all." }
 ];
 const grids = {};
 TIERS.forEach(t => {
@@ -301,13 +318,13 @@ TIERS.forEach(t => {
 });
 ADDONS.forEach(a => {
   const b = document.createElement("button");
-  b.type = "button"; b.className = "tip " + a.q; b.id = "tip-" + a.id;
+  b.type = "button"; b.className = "tip " + a.q + (a.soon ? " soon" : ""); b.id = "tip-" + a.id;
   b.setAttribute("aria-expanded", "false"); b.setAttribute("aria-controls", "detail");
   b.innerHTML = `
     <span class="name">${esc(a.name)}</span>
     <span class="white">Binds when installed</span>
-    <span class="line white"><span>${a.slot}</span><span>${a.status}</span></span>
-    <span class="line"><span class="muted">Version ${a.ver}</span><span class="muted mono">${a.cmd}</span></span>
+    <span class="line white"><span>${a.slot}</span><span>${a.soon ? "Coming soon" : a.status === "Dev" ? "Dev tool" : a.status}</span></span>
+    <span class="line"><span class="muted">${a.soon ? "Not released yet" : "Version " + a.ver}</span><span class="muted mono">${a.cmd || ""}</span></span>
     <span class="use">Use: ${esc(a.use)}</span>
     <span class="flavor">${esc(a.flavor)}</span>
     <span class="more">Details ▾</span>`;
@@ -324,15 +341,15 @@ function open(id, scroll) {
   detail.className = "detail " + a.q;
   detail.innerHTML = `<div class="detail-in">
     <div class="d-head">
-      <div><h3>${esc(a.name)}</h3><p class="sub">Version ${a.ver} · ${a.status} · Forever 1.60.x</p></div>
-      <div class="d-actions"><button type="button" class="close" id="closeDetail" aria-label="Close details" title="Close">&times;</button><a class="dl" href="https://the-tiagomapereira.github.io/marisco-addons/downloads/${zip}" download>Download <small>${zip}</small></a></div>
+      <div><h3>${esc(a.name)}</h3><p class="sub">${a.soon ? "Coming soon" : "Version " + a.ver} · ${a.status === "Dev" ? "For Development" : a.status} · Forever 1.60.x</p></div>
+      <div class="d-actions"><button type="button" class="close" id="closeDetail" aria-label="Close details" title="Close">&times;</button>${a.soon ? `<span class="dl off">Download coming soon</span>` : `<a class="dl" href="https://the-tiagomapereira.github.io/marisco-addons/downloads/${zip}" download>Download <small>${zip}</small></a>`}</div>
     </div>
     <div class="shots">${a.shots.map(s => typeof s === "string" ? `<div class="shot"><span>Screenshot: ${esc(s)}</span></div>` : `<div class="shot img" tabindex="0" data-src="${s.src}" title="${esc(s.cap)}"><img src="${s.src}" alt="${esc(s.cap)}" loading="lazy"></div>`).join("")}</div>
     <div class="cols">
       <div><h4>What it does</h4><ul class="feat">${a.feat.map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>
       ${a.mm ? `<div><h4>Minimap button</h4><p class="avail"><b>Available</b> · ${esc(a.mm.icon)} icon on the minimap</p><dl class="mm"><div><dt>Left-click</dt><dd>${esc(a.mm.left)}</dd></div>${a.mm.right ? `<div><dt>Right-click</dt><dd>${esc(a.mm.right)}</dd></div>` : ""}<div><dt>Drag</dt><dd>Move it around the minimap</dd></div></dl></div>` : ""}
-      <div><h4>Release notes</h4><dl class="log">${a.log.map(([v,t]) => `<div><dt>${v}</dt><dd>${esc(t)}</dd></div>`).join("")}</dl></div>
-      <div><h4>Commands</h4><div class="cmds">${a.cmds.map(c => `<code>${esc(c)}</code>`).join("")}</div></div>
+      ${a.log.length ? `<div><h4>Release notes</h4><dl class="log">${a.log.map(([v,t]) => `<div><dt>${v}</dt><dd>${esc(t)}</dd></div>`).join("")}</dl></div>` : ""}
+      ${a.cmds.length ? `<div><h4>Commands</h4><div class="cmds">${a.cmds.map(c => `<code>${esc(c)}</code>`).join("")}</div></div>` : ""}
     </div></div>`;
   detail.hidden = false;
   document.getElementById("closeDetail").addEventListener("click", () => closeDetail(a.id));
