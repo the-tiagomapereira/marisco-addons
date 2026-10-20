@@ -2,7 +2,7 @@
 ## Title: Marisco's Shellcracker
 ## Notes: Bejeweled-style match-3 with Azeroth's gems. Crack makrura shells with combos.
 ## Author: Marisco
-## Version: 1.0 - Release
+## Version: 0.13.2 Beta
 ## IconTexture: Interface\Icons\Ability_Hunter_Pet_Crab
 ## SavedVariables: MariscosShellcrackerDB
 ## SavedVariablesPerCharacter: MariscosShellcrackerCharDB

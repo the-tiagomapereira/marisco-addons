@@ -1640,42 +1640,58 @@ function UI:UpdateBuffs()
     end
 end
 
--- what the matched gem colours do (once per match)
+-- one gem colour's power, rolled `times` times (a match = 1; a Hypercube = 1 per gem it destroys, up to 10)
+local function ApplyGemBonus(color, times, source)
+    local b = ns.GEM_BONUS[color]
+    if type(b) ~= "table" then return end
+    times = times or 1
+    local M = G.mods or {}
+    -- chance that at least one of the rolls succeeds
+    local function rolls(pct) return 1 - (1 - min(100, pct) / 100) ^ times end
+    if b.kind == "freeze" then
+        if not G.frozen and math.random() < rolls(b.chance + (M.freezeChance or 0)) then
+            G.frozen = true
+            G.timer = G.timer + 1
+            SFX("freeze")
+            BattleLog("info", ("%s freezes %s: its next attack comes a move later."):format(source or GemName(color), Foe()))
+        end
+    elseif b.kind == "dot" then
+        if math.random() < rolls(b.chance + (M.curseChance or 0)) then
+            local fresh = not G.dot
+            local stacks = 1
+            if G.dot and M.legendary and M.legendary.legsAbyss then
+                stacks = min(3, (G.dot.stacks or 1) + 1)
+            end
+            G.dot = { left = b.moves, stacks = stacks }
+            SFX("curse")
+            BattleLog("dot", ("%s %s %s: %d%% of its health in shadow damage every move for %d moves."):format(
+                source or GemName(color), fresh and "curses" or "renews its curse on", Foe(), b.pct, b.moves))
+        end
+    elseif b.kind then
+        local cap = BuffCap(b.kind)
+        local cur = G.buffs[b.kind] or 0
+        if cur < cap then
+            G.buffs[b.kind] = min(cap, cur + b.per * times)
+            local info = ns.BUFF_INFO[b.kind]
+            if source then
+                BattleLog("info", ("%s: %s +%d%% (now %d%%)."):format(source, info.name, G.buffs[b.kind] - cur, G.buffs[b.kind]))
+            end
+            if G.buffs[b.kind] >= cap then
+                BattleLog("info", ("%s is at its cap for this tide: %s."):format(info.name, info.text:format(cap)))
+            end
+        end
+    end
+end
+
+-- what the matched gem colours do (once per match); a Hypercube that wipes out a colour
+-- counts as that many matches of it, up to 10
 local function GemBonuses(step)
     G.buffs = G.buffs or { dmg = 0, dr = 0, gold = 0, drop = 0 }
-    for _, grp in ipairs(step.groups) do
-        local b = ns.GEM_BONUS[grp.color]
-        if b then
-            if b.kind == "freeze" then
-                if not G.frozen and math.random() * 100 < b.chance + ((G.mods and G.mods.freezeChance) or 0) then
-                    G.frozen = true
-                    G.timer = G.timer + 1
-                    SFX("freeze")
-                    BattleLog("info", ("%s freezes %s: its next attack comes a move later."):format(GemName(grp.color), Foe()))
-                end
-            elseif b.kind == "dot" then
-                if math.random() * 100 < b.chance + ((G.mods and G.mods.curseChance) or 0) then
-                    local fresh = not G.dot
-                    local stacks = 1
-                    if G.dot and G.mods and G.mods.legendary and G.mods.legendary.legsAbyss then
-                        stacks = min(3, (G.dot.stacks or 1) + 1)
-                    end
-                    G.dot = { left = b.moves, stacks = stacks }
-                    SFX("curse")
-                    BattleLog("dot", ("%s %s %s: %d%% of its health in shadow damage every move for %d moves."):format(
-                        GemName(grp.color), fresh and "curses" or "renews its curse on", Foe(), b.pct, b.moves))
-                end
-            else
-                local cap = BuffCap(b.kind)
-                local cur = G.buffs[b.kind] or 0
-                if cur < cap then
-                    G.buffs[b.kind] = min(cap, cur + b.per)
-                    if G.buffs[b.kind] >= cap then
-                        local info = ns.BUFF_INFO[b.kind]
-                        BattleLog("info", ("%s is at its cap for this tide: %s."):format(info.name, info.text:format(cap)))
-                    end
-                end
-            end
+    for _, grp in ipairs(step.groups) do ApplyGemBonus(grp.color, 1) end
+    for _, eff in ipairs(step.effects or {}) do
+        if eff.kind == "hyper" and eff.color and eff.cells and #eff.cells > 0 and type(ns.GEM_BONUS[eff.color]) == "table" then
+            local n = min(#eff.cells, ns.HYPER_BONUS_CAP)
+            ApplyGemBonus(eff.color, n, ("The Hypercube (%d x %s)"):format(#eff.cells, GemName(eff.color)))
         end
     end
 end
@@ -1859,6 +1875,8 @@ local function ApplyStep(step)
                 why = "the Heart of the Deep"
             end
             BattleLog("heal", ("%s heals for %s from %s."):format(Me(), Num(got), why))
+            -- 3 Huge Emeralds: Healing Wave; 4 or more: Rejuvenation
+            if emeralds >= 4 then SFX("healBig") elseif emeralds == 3 then SFX("healSmall") end
         end
     end
     FX({ region = P.hit, dur = 0.25, a0 = 0.35, a1 = 0 })

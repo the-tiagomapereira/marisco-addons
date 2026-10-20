@@ -1,4 +1,4 @@
-# Marisco's Shellcracker — v1.0 - Release
+# Marisco's Shellcracker — v0.13.2 - Beta
 
 For World of Warcraft: Forever 1.60.x (interface 16001).
 
@@ -57,18 +57,23 @@ by the cascade level.
 
 ## Gem powers
 Every colour does something when you match it (once per match, however many gems; gems destroyed
-by explosions or Hypercubes don't count, except for Emerald healing). The four run buffs last until
+by explosions don't count, except for Emerald healing). A **Hypercube** that wipes out a colour
+counts as one match of it **per gem destroyed, up to 10**: 8 Diamonds = +8% Diamond Edge, and the
+freeze or curse gets up to 10 tries. The four run buffs last until
 you die and their cap goes up with every tide, so you keep getting stronger as the makrura do.
 
 | Gem | Each match | Lasts | Cap |
 |---|---|---|---|
 | Huge Emerald | Each gem heals 15% of the hit you'd take from the makrura (at least 20) | Instant | - |
-| Aquamarine | 15% chance to freeze the makrura: its next attack comes a move later | Until it attacks | One freeze at a time |
+| Aquamarine | 50% chance to freeze the makrura: its next attack comes a move later | Until it attacks | One freeze at a time |
 | Shadowgem | 15% chance to curse it: 1% of its max health as shadow damage every move for 10 moves (carries over to the next makrura) | 10 moves | A new curse restarts the 10 moves |
 | Citrine | +2% gold (Citrine Fortune) | Whole run | +50% per tide |
 | Azerothian Diamond | +1% damage (Diamond Edge) | Whole run | +25% per tide |
 | Star Ruby | -1% damage taken (Ruby Ward) | Whole run | -10% per tide, -30% at most |
 | Black Pearl | +1% item drop chance (Pearl Luck) | Whole run | +20% per tide |
+
+Emerald heals play a WoW healing sound: **Healing Wave** for 3 Huge Emeralds, **Rejuvenation** for
+4 or more.
 
 The active ones show as icons under your experience bar (hover for details); the battle text tells
 you about freezes, curses, shadow damage and caps reached.
@@ -316,7 +321,9 @@ saved separately, and whoever is logged in plays and records under their own nam
 - Settings and best scores are saved per account; the game in progress per character.
 
 ## Changelog
-- 1.0 (release): First full release. Same game as 0.13.1, now marked as a release.
+- 0.13.2: Aquamarine freeze chance 15% -> 50%. A Hypercube wiping out a colour gives that colour's
+  power once per gem destroyed (up to 10). Healing Wave sound for 3 Huge Emeralds, Rejuvenation
+  for 4 or more.
 - 0.13.1: WoW-style "Currently Equipped" comparison tooltips beside the item tooltip, stat change
   if you equip it (updates when you press Shift), your gear stats shown in the bags window.
 - 0.13: backpack under the right panel. Loot is a surprise until you open your bags; items found in

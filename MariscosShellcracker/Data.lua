@@ -16,17 +16,20 @@ ns.EMERALD = 4          -- Huge Emerald matches heal you
 ns.HEAL_PER_EMERALD = 20 -- minimum heal per Huge Emerald
 
 -- What each gem colour does when you match it (counted per match, not per gem; gems destroyed
--- by explosions or Hypercubes don't trigger these, except the Emerald heal).
+-- by explosions don't trigger these, except the Emerald heal). A Hypercube that wipes out a
+-- colour counts as one match per gem destroyed, up to HYPER_BONUS_CAP.
 -- Run buffs last until you die; their cap rises with every tide (cap x tide).
 ns.GEM_BONUS = {
     emeraldHit = 0.15,                            -- each Huge Emerald heals 15% of the hit you'd take from the makrura
-    [5] = { kind = "freeze", chance = 15 },       -- Aquamarine: its next attack comes 1 move later
+    [5] = { kind = "freeze", chance = 50 },       -- Aquamarine: its next attack comes 1 move later
     [6] = { kind = "dot", chance = 15, pct = 1, moves = 10 },   -- Shadowgem: 1% of its max health per move, 10 moves
     [3] = { kind = "gold", per = 2, cap = 50 },   -- Citrine: +2% gold, cap +50% per tide
     [7] = { kind = "dmg",  per = 1, cap = 25 },   -- Azerothian Diamond: +1% damage, cap +25% per tide
     [1] = { kind = "dr",   per = 1, cap = 10, max = 30 },  -- Star Ruby: -1% damage taken, cap 10% per tide, 30% at most
     [2] = { kind = "drop", per = 1, cap = 20 },   -- Black Pearl: +1% item drop chance, cap +20% per tide
 }
+ns.HYPER_BONUS_CAP = 10   -- a Hypercube wiping out a colour counts as up to 10 matches of it
+
 ns.BUFF_INFO = {
     dmg    = { gem = 7, name = "Diamond Edge",    text = "+%d%% damage for the rest of the run" },
     dr     = { gem = 1, name = "Ruby Ward",       text = "%d%% less damage taken for the rest of the run" },
@@ -139,6 +142,8 @@ ns.SFX = {
     talent     = { 567524 },                     -- spell icon drop: learning a talent
     untalent   = { 567489 },                     -- spell icon pickup: removing a point
     freeze     = { 569378 },                     -- frost nova: Aquamarine freeze
+    healSmall  = { 568572, 569027, 568829, 568788, 568273 },   -- Healing Wave impact: 3 Huge Emeralds
+    healBig    = { 569594 },                     -- Rejuvenation: 4 or more Huge Emeralds
     curse      = { 569138 },                     -- shadow word: pain on a target: Shadowgem curse
 }
 

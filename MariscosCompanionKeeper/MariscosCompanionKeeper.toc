@@ -1,11 +1,14 @@
 ## Interface: 16001
 ## Title: Marisco's Companion Keeper
-## Notes: Look after the companion pets you own. v0.1 - Alpha: reads your Companion Journal and lets you choose your companion.
+## Notes: Look after the companion pets you own. v0.7.1 - Alpha: daily challenges, pet, fetch, walk together and more ways to make your companion happy.
 ## Author: Marisco
-## Version: 0.1
+## Version: 0.7.1
 ## IconTexture: Interface\Icons\INV_Box_PetCarrier_01
 ## SavedVariables: MariscosCompanionKeeperDB
 
 Core.lua
 Journal.lua
+Buddy.lua
+Tracker.lua
+Fetch.lua
 UI.lua

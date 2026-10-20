@@ -258,6 +258,68 @@ end
 
 function J:Get(id) return id and self.byID[id] end
 
+-- Summon a companion, or dismiss it if it is already out.
+-- Returns true, or false and a message to show the player.
+function J:ToggleSummon(id)
+    local e = self:Get(id)
+    if not e then return false, "That companion isn't in your Companion Journal right now." end
+    if InCombatLockdown and InCombatLockdown() then
+        return false, "You can't summon a companion while in combat."
+    end
+    if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") then
+        return false, "You can't summon a companion while dead."
+    end
+
+    local isOut = (self.summonedID == id)
+
+    if self.mode == "journal" then
+        if not isOut and PJ.PetIsSummonable then
+            local ok, can, _, errText = Call(PJ.PetIsSummonable, id)
+            local blocked = false
+            pcall(function() blocked = ok and can == false end)
+            if blocked then
+                return false, NonEmpty(errText) and errText or "This companion can't be summoned right now."
+            end
+        end
+        if isOut and PJ.DismissSummonedPet then
+            -- Forever's version needs the pet: DismissSummonedPet(petID).
+            if not Call(PJ.DismissSummonedPet, id) then
+                -- fall back to summoning the same pet again, which sends it back
+                if not (PJ.SummonPetByGUID and Call(PJ.SummonPetByGUID, id)) then
+                    return false, "Summoning back failed: " .. Str(self.errors[#self.errors])
+                end
+            end
+        elseif PJ.SummonPetByGUID then
+            -- Summoning the companion that is already out dismisses it.
+            if not Call(PJ.SummonPetByGUID, id) then
+                return false, "Summoning failed: " .. Str(self.errors[#self.errors])
+            end
+        else
+            return false, "This client doesn't let addons summon companions."
+        end
+    elseif self.mode == "companions" then
+        if isOut and DismissCompanion then
+            Call(DismissCompanion, "CRITTER")
+        elseif CallCompanion and e.index then
+            if not Call(CallCompanion, "CRITTER", e.index) then
+                return false, "Summoning failed: " .. Str(self.errors[#self.errors])
+            end
+        else
+            return false, "This client doesn't let addons summon companions."
+        end
+    else
+        return false, "The Companion Journal isn't available."
+    end
+
+    -- COMPANION_UPDATE normally reports the change; check again in case it doesn't arrive.
+    for _, delay in ipairs({ 0.5, 1.5, 3 }) do
+        C_Timer.After(delay, function()
+            if J:UpdateSummoned() and ns.UI then ns.UI:Refresh() end
+        end)
+    end
+    return true
+end
+
 function J:Init()
     local ev = CreateFrame("Frame")
     for _, name in ipairs({ "PET_JOURNAL_LIST_UPDATE", "COMPANION_LEARNED", "COMPANION_UNLEARNED",
@@ -387,6 +449,11 @@ function J:BuildProbeReport()
     end
     local sel = ns.db and ns.db.selected
     add("Chosen companion: " .. (sel and (Str(sel.name) .. " (" .. Str(sel.id) .. ")") or "none"))
+    if ns.Buddy and ns.Buddy.Position then
+        local x, y, inst = ns.Buddy:Position()
+        add("Walk together position: " .. (x and (("%.1f, %.1f (area %s)"):format(x, y, Str(inst))) or "not available"))
+        add("UnitPosition: " .. CallVals(UnitPosition, "player"))
+    end
     add("")
 
     add("== Errors ==")
