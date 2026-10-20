@@ -786,9 +786,25 @@ end
 
 SLASH_MARISCOSBUGCATCHER1 = "/mbc"
 SLASH_MARISCOSBUGCATCHER2 = "/bugcatcher"
-SlashCmdList.MARISCOSBUGCATCHER = function(input)
+-- Works even if Core.lua failed to load.
+local function say(msg)
+    if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then DEFAULT_CHAT_FRAME:AddMessage(msg) else print(msg) end
+end
+
+local function slash(input)
     local cmd = (input or ""):lower():match("^%s*(%S*)") or ""
-    if not ns.db then return end
+    if not ns.db and not (ns.Init and ns.Init()) then
+        say("|cffff5555[Bug Catcher]|r could not start: " .. tostring(ns.initError or "saved data not loaded")
+            .. " (Core.lua stopped at: " .. tostring(ns.stage or "not loaded") .. ")")
+        for _, line in ipairs(ns.setupLog or {}) do say("   setup: " .. line) end
+        if ns.cur then
+            for i, e in ipairs(ns.cur.errors) do
+                if i > 3 then break end
+                say("   caught: " .. tostring(e.msg))
+            end
+        end
+        return
+    end
     if cmd == "" or cmd == "show" or cmd == "toggle" then
         ns.ToggleWindow()
     elseif cmd == "test" then
@@ -824,4 +840,9 @@ SlashCmdList.MARISCOSBUGCATCHER = function(input)
     else
         print("|cffff5555[Bug Catcher]|r /mbc · /mbc test · /mbc last · /mbc clear · /mbc clearall · /mbc config · /mbc chat · /mbc sound · /mbc minimap · /mbc status · /mbc reset")
     end
+end
+
+SlashCmdList.MARISCOSBUGCATCHER = function(input)
+    local ok, err = pcall(slash, input)
+    if not ok then say("|cffff5555[Bug Catcher] internal error:|r " .. tostring(err)) end
 end

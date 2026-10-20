@@ -6,8 +6,22 @@ local ADDON, ns = ...
 local SELF_TAG = "MariscosBugCatcher"
 local format = string.format
 
-local GetMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-ns.VERSION = (GetMeta and GetMeta(ADDON, "Version")) or "0.1"
+-- Every step that touches a game API runs through try(): a failure is written to
+-- ns.setupLog (shown in chat at login and by /mbc) instead of stopping the addon.
+ns.stage = "start"
+ns.setupLog = {}
+local function try(label, fn, ...)
+    local ok, err = pcall(fn, ...)
+    if not ok then ns.setupLog[#ns.setupLog + 1] = label .. ": " .. tostring(err) end
+    return ok, err
+end
+ns.Try = try
+
+ns.VERSION = "0.1.2"
+try("version", function()
+    local GetMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    ns.VERSION = GetMeta(ADDON, "Version") or ns.VERSION
+end)
 
 ns.MAX_UNIQUE = 150      -- unique entries kept per session
 ns.MAX_STACK = 6000      -- characters
@@ -176,8 +190,10 @@ end
 ----------------------------------------------------------------------
 -- The Lua error handler
 ----------------------------------------------------------------------
+ns.stage = "error handler"
 local busy = false
-local origHandler = geterrorhandler and geterrorhandler()
+local origHandler
+try("geterrorhandler", function() origHandler = geterrorhandler() end)
 
 local function OnError(msg, ...)
     if not busy then
@@ -192,7 +208,11 @@ local function OnError(msg, ...)
             if not okL or not l or l == "" then okL, l = pcall(debuglocals, 2) end
             locals = okL and l or nil
         end
-        pcall(ns.Record, "error", m, stack, locals)
+        local okR, errR = pcall(ns.Record, "error", m, stack, locals)
+        if not okR and ns.SelfError then pcall(ns.SelfError, "while recording an error: " .. tostring(errR)) end
+        if m:find(SELF_TAG, 1, true) and not m:find("Bug Catcher test error", 1, true) and ns.SelfError then
+            pcall(ns.SelfError, m)
+        end
         busy = false
     end
     if S("blizzard") and origHandler and origHandler ~= OnError then
@@ -201,29 +221,75 @@ local function OnError(msg, ...)
     return msg
 end
 ns.OnError = OnError
-if seterrorhandler then seterrorhandler(OnError) end
+
+local function handlerIsOurs()
+    local ok, h = pcall(geterrorhandler)
+    return ok and h == OnError
+end
+ns.HandlerIsOurs = handlerIsOurs
+
+try("seterrorhandler", seterrorhandler, OnError)
+ns.handlerSet = handlerIsOurs()
 
 ns.handlerBlocked = false
 function ns.EnsureHandler()
-    if not geterrorhandler or not seterrorhandler or ns.handlerBlocked then return end
-    local h = geterrorhandler()
-    if h ~= OnError then
-        if h then origHandler = h end
-        seterrorhandler(OnError)
-        if geterrorhandler() ~= OnError then
-            ns.handlerBlocked = true
-            if ns.loggedIn then
-                print("|cffff5555[Bug Catcher]|r Another error catcher (BugGrabber, BugSack, ElvUI...) holds the Lua error handler. Lua errors can't be caught; blocked actions and load problems still are. Use one error catcher at a time.")
-            end
+    if ns.handlerBlocked or ns.handlerFailed then return end
+    local ok = pcall(function()
+        local h = geterrorhandler()
+        if h ~= OnError then
+            if h then origHandler = h end
+            seterrorhandler(OnError)
+        end
+    end)
+    if not ok then ns.handlerFailed = true end
+    ns.handlerSet = handlerIsOurs()
+    if ok and not ns.handlerSet then
+        ns.handlerBlocked = true
+        if ns.loggedIn then
+            print("|cffff5555[Bug Catcher]|r Another error catcher (BugGrabber, BugSack, ElvUI...) holds the Lua error handler. Lua errors can't be caught; blocked actions and load problems still are. Use one error catcher at a time.")
         end
     end
+    if not ns.handlerSet and ns.HookErrorFrame then ns.HookErrorFrame() end
 end
-if hooksecurefunc and seterrorhandler then
+
+try("hook seterrorhandler", function()
     hooksecurefunc("seterrorhandler", function(h)
         if h ~= OnError and not ns.handlerBlocked and C_Timer then C_Timer.After(0, ns.EnsureHandler) end
     end)
+end)
+
+-- Fallback when this client doesn't let addons set the error handler: listen to the
+-- game's own error window, which still receives every Lua error.
+ns.errorFrameHooked = false
+function ns.HookErrorFrame()
+    if ns.errorFrameHooked then return true end
+    local sef = _G.ScriptErrorsFrame
+    if type(sef) ~= "table" then return false end
+    local function grab(msg)
+        if busy or handlerIsOurs() then return end
+        busy = true
+        local m = tostring(msg)
+        local stack, locals
+        if not ns.Lookup("error", m) then
+            stack = debugstack and debugstack(3) or nil
+            local okL, l = pcall(debuglocals, 4)
+            locals = okL and l or nil
+        end
+        pcall(ns.Record, "error", m, stack, locals)
+        busy = false
+    end
+    for _, method in ipairs({ "OnError", "DisplayMessage" }) do
+        if type(sef[method]) == "function" then
+            if try("hook ScriptErrorsFrame." .. method, hooksecurefunc, sef, method, function(_, msg) grab(msg) end) then
+                ns.errorFrameHooked = method
+                return true
+            end
+        end
+    end
+    return false
 end
 
+ns.stage = "hints"
 ----------------------------------------------------------------------
 -- Hints shown with non-Lua problems
 ----------------------------------------------------------------------
@@ -336,6 +402,7 @@ function ns.ResetSettings()
     ns.db.settings = copy(defaults)
 end
 
+ns.stage = "saved data"
 local function initDB()
     MariscosBugCatcherDB = type(MariscosBugCatcherDB) == "table" and MariscosBugCatcherDB or {}
     local db = MariscosBugCatcherDB
@@ -347,15 +414,47 @@ local function initDB()
     db.sessions = type(db.sessions) == "table" and db.sessions or {}
     db.counter = (tonumber(db.counter) or 0) + 1
     cur.id = db.counter
-    if GetBuildInfo then
+    pcall(function()
         local version, build, _, toc = GetBuildInfo()
         cur.client = format("%s (build %s), interface %s, %s", tostring(version), tostring(build), tostring(toc), GetLocale and GetLocale() or "?")
-    end
+    end)
     db.sessions[#db.sessions + 1] = cur
     ns.db = db
     ns.TrimSessions()
 end
 
+-- Errors in Bug Catcher's own code are printed straight to chat (never only swallowed),
+-- so a problem in this addon can't hide itself.
+ns.selfErrors = {}
+local function chat(msg)
+    local cf = DEFAULT_CHAT_FRAME
+    if cf and cf.AddMessage then cf:AddMessage(msg) else print(msg) end
+end
+ns.Chat = chat
+function ns.SelfError(err)
+    err = tostring(err)
+    if ns.loggedIn then
+        chat("|cffff5555[Bug Catcher] internal error:|r " .. err)
+    else
+        ns.selfErrors[#ns.selfErrors + 1] = err
+    end
+end
+
+-- Sets up the saved data; safe to call more than once.
+function ns.Init()
+    if ns.db then return true end
+    local ok, err = pcall(initDB)
+    if not ok then
+        ns.initError = tostring(err)
+        ns.db = nil
+        ns.SelfError("setup failed: " .. ns.initError)
+        return false
+    end
+    ns.initError = nil
+    return true
+end
+
+ns.stage = "events"
 local ev = CreateFrame("Frame")
 for _, event in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD",
     "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN", "MACRO_ACTION_BLOCKED", "MACRO_ACTION_FORBIDDEN",
@@ -363,9 +462,10 @@ for _, event in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD"
     pcall(ev.RegisterEvent, ev, event)   -- an event this client doesn't know is just skipped
 end
 
-ev:SetScript("OnEvent", function(_, event, a1, a2)
+local function OnEvent(_, event, a1, a2)
     if event == "ADDON_LOADED" then
-        if a1 == ADDON then initDB() end
+        if ns.loggedIn and not ns.handlerSet and not ns.errorFrameHooked then ns.HookErrorFrame() end
+        if a1 == ADDON or (type(a1) == "string" and a1:find(SELF_TAG, 1, true)) then ns.Init() end
 
     elseif event == "PLAYER_LOGIN" then
         local name, realm = UnitName("player"), GetRealmName and GetRealmName() or ""
@@ -373,8 +473,21 @@ ev:SetScript("OnEvent", function(_, event, a1, a2)
         local _, class = UnitClass("player")
         cur.class = class
         ns.loggedIn = true
+        ns.Init()   -- in case ADDON_LOADED was missed
+        chat(format("|cffff5555[Bug Catcher]|r v%s is watching for errors. Type |cffffd100/mbc|r to open it.", ns.VERSION))
+        for _, err in ipairs(ns.selfErrors) do chat("|cffff5555[Bug Catcher] internal error:|r " .. err) end
+        wipe(ns.selfErrors)
         ns.EnsureHandler()
-        ns.CheckLoadIssues()
+        if not ns.handlerSet and not ns.handlerBlocked then
+            if ns.HookErrorFrame() then
+                chat("|cffff5555[Bug Catcher]|r This client doesn't let addons own the Lua error handler, so errors are read from the game's error window instead.")
+            else
+                chat("|cffff5555[Bug Catcher]|r Can't reach Lua errors on this client (no error handler, no error window). Blocked actions, warnings and load problems are still caught.")
+            end
+        end
+        for _, line in ipairs(ns.setupLog) do chat("|cff888888[Bug Catcher] setup: " .. line .. "|r") end
+        local okL, errL = pcall(ns.CheckLoadIssues)
+        if not okL then ns.SelfError(errL) end
         if ns.handlerBlocked then
             print("|cffff5555[Bug Catcher]|r Another error catcher (BugGrabber, BugSack, ElvUI...) holds the Lua error handler. Lua errors can't be caught; blocked actions and load problems still are. Use one error catcher at a time.")
         end
@@ -385,7 +498,10 @@ ev:SetScript("OnEvent", function(_, event, a1, a2)
             lastChat = GetTime()
         end
         loadHeld = 0
-        if ns.OnLogin then ns.OnLogin() end
+        if ns.OnLogin then
+            local okO, errO = pcall(ns.OnLogin)
+            if not okO then ns.SelfError(errO) end
+        end
         if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(30, ns.EnsureHandler) end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
@@ -415,4 +531,11 @@ ev:SetScript("OnEvent", function(_, event, a1, a2)
         ns.Record("warning", format("Saved variables of %s are too large; the game did not load them.", tostring(a1)),
             nil, nil, tostring(a1), "The addon's saved data file in WTF is too big. It will start fresh unless the file is trimmed.")
     end
+end
+
+ev:SetScript("OnEvent", function(...)
+    local ok, err = pcall(OnEvent, ...)
+    if not ok then ns.SelfError(err) end
 end)
+
+ns.stage = "done"

@@ -22,7 +22,7 @@ All addons are for **World of Warcraft: Forever 1.60.x** (interface 16001).
 
 | Addon | Version | What it does |
 |---|---|---|
-| [Marisco's Bug Catcher](!MariscosBugCatcher/README.md) | 0.1 | Catches Lua errors, blocked actions and load failures for debugging (not in the suite zip) |
+| [Marisco's Bug Catcher](!MariscosBugCatcher/README.md) | 0.1.2 | Catches Lua errors, blocked actions and load failures for debugging (not in the suite zip) |
 
 ## Install
 1. Close WoW.

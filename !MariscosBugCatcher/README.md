@@ -1,4 +1,4 @@
-# Marisco's Bug Catcher — v0.1 - Beta
+# Marisco's Bug Catcher — v0.1.2 - Beta
 
 For World of Warcraft: Forever 1.60.x (interface 16001).
 
@@ -14,6 +14,8 @@ to copy. Made for debugging your own addons.
    The `!` is on purpose: it makes the addon load before all others, so it also catches the
    errors other addons throw while they load.
 4. Start the game and enable the addon in the AddOns list.
+5. After login, chat shows "[Bug Catcher] v0.1.2 is watching for errors". No line means the
+   addon isn't loading at all (check the folder and that it's ticked in the AddOns list).
 
 ## What it catches
 - **Lua errors** from any addon (or Blizzard's own UI): message, stack trace and local variables.
@@ -58,6 +60,11 @@ minimap button, sessions kept (1-50, default 10). Changes apply at once; **Defau
 ## Notes
 - Errors are saved per account (`MariscosBugCatcherDB`), up to 150 unique entries per session.
   Sessions with nothing caught are not kept.
+- Problems in Bug Catcher itself are printed in chat as "[Bug Catcher] internal error: ...";
+  they are never hidden in its own list.
+- If the client doesn't let addons own the Lua error handler, Bug Catcher says so at login and
+  reads errors from the game's own error window instead. Any setup step that failed is listed in
+  grey as "[Bug Catcher] setup: ...".
 - Use one error catcher at a time. If BugGrabber/BugSack (or ElvUI's) holds the Lua error handler,
   the window says so: Lua errors can't be caught then, blocked actions and load problems still are.
 - Errors from Blizzard's own UI before any addon loads can't be caught by any addon.
@@ -66,4 +73,11 @@ minimap button, sessions kept (1-50, default 10). Changes apply at once; **Defau
 - The minimap button is a normal named button, so MiniMapButtonHoarder picks it up.
 
 ## Changelog
+- 0.1.2: Fixed "could not start: saved data not loaded": the file stopped loading when the client
+  refused a call that sets up error catching. Every such call is now protected and reported, and
+  errors are read from the game's error window when the handler can't be set. `/mbc` says where
+  loading stopped if it still can't start.
+- 0.1.1: Fixed `/mbc` doing nothing when the saved data wasn't set up: setup is retried at login
+  and on `/mbc`, and the reason is printed if it still fails. Errors in Bug Catcher's own code now
+  go to chat instead of being swallowed. Login line confirms the addon is running.
 - 0.1: First release.

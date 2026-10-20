@@ -2,7 +2,7 @@
 ## Title: Marisco's Bug Catcher
 ## Notes: Catches Lua errors, blocked actions (taint), Lua warnings and addons that fail to load, so you can debug your addons.
 ## Author: Marisco
-## Version: 0.1
+## Version: 0.1.2
 ## IconTexture: Interface\Icons\Spell_Nature_InsectSwarm
 ## SavedVariables: MariscosBugCatcherDB
 

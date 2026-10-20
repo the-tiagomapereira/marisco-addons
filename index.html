@@ -290,13 +290,13 @@ const ADDONS = [
     cmds:["/mmu","/mmu edit","/mmu back","/mmu square","/mmu skin <name>","/mmu size <n>","/mmu probe"],
     shots:["Minimap flush against the screen edge","Edit layout mode with the cyan and gold boxes","Square map with a border skin"],
     log:[["0.3.1","Part settings now survive a relog; rename any part. Left-click the minimap button for settings again."],["0.3","Parts section: per-part scale, show/hide and layer; click a part while editing to open its settings."],["0.2","Every minimap part moves on its own; new edit layout mode."]] },
-  { id:"buggrabber", mm:{icon:"insect swarm", left:"Open the error window", right:"Error summary per addon in chat"}, zip:"MariscosBugCatcher-0.1.zip", name:"Marisco's Bug Catcher", ver:"0.1", status:"Dev", q:"q-dev", slot:"Debugging",
+  { id:"buggrabber", mm:{icon:"insect swarm", left:"Open the error window", right:"Error summary per addon in chat"}, zip:"MariscosBugCatcher-0.1.2.zip", name:"Marisco's Bug Catcher", ver:"0.1.2", status:"Dev", q:"q-dev", slot:"Debugging",
     cmd:"/mbc", use:"Catches Lua errors, blocked actions, warnings and addons that fail to load, names the addon to blame and keeps the full details ready to copy.",
     flavor:"\"Every bug, caught in the act.\"",
     feat:["Lua errors with stack trace and locals","Blocked actions (taint) explained","Addons that failed to load, and why","Last 10 sessions kept, with search and filters","Copy all: a full report ready to paste"],
     cmds:["/mbc","/mbc test","/mbc last","/mbc clear","/mbc config","/mbc status"],
     shots:["Error window with the session list","Details with stack and locals","Minimap button glowing with a count"],
-    log:[["0.1","First release."]] }
+    log:[["0.1.2","Starts reliably even when the client refuses part of the setup; falls back to the game's error window."],["0.1.1","/mbc works when saved data wasn't ready; login line confirms it's running."],["0.1","First release."]] }
 ];
 
 const bag = document.getElementById("bag");
